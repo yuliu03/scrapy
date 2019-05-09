@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+ <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BootCDN - Bootstrap 中文网开源项目免费 CDN 加速服务</title>
+  <meta name="keywords" content="" />
+  <meta name="author" content="zjmi" />
+  <meta name="founder" content="liu" />
+
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" rel="stylesheet" />
+     <link href="http://libs.baidu.com/fontawesome/4.4.0/css/font-awesome.min.css" rel="stylesheet"/>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+  <!--[if lt IE 9]>
+    <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+  <![endif]-->
+
+ </head>
+ <style>
+    .form-group{ position: relative; }
+    .form-wrapper i.fa{ position: absolute; top: 100px; left: 10px; }
+    .form-group input { text-indent: 30px;}
+
+     <!--
+    验证码css
+    -->
+     #captcha {
+        border-radius: 2px;
+        cursor: pointer;
+        position: absolute;
+        z-index: 3;
+        left: 0;
+        top: 0;
+        }
+
+        #validateCode {
+        padding-left: 110px;
+        }
+ </style>
+
+ <body class="home-template">
+   <div class="container jumbotron" id="container">
+    <div class="row">
+     <div class="col-xs-12" style="text-align:center">
+      <h1>Seach Company</h1>
+      <p><br /><span class="package-amount">共收录了 <strong>3434</strong> 个前端开源项目</span></p>
+
+       <!--  <div class="search-wrapper" role="search">
+       <div class="form-group">
+        <input class="form-control search clearable" placeholder="搜索公司名称，例如：物产云商有限公司" autocomplete="off" autofocus="" tabindex="0" autocorrect="off" autocapitalize="off" spellcheck="false" />
+       </div>
+      </div>
+
+
+         <form class="search-wrapper"  role="search">
+            <div class="input-group">
+                    <input class="form-control search clearable" placeholder="搜索公司名称，例如：物产云商有限公司" autocomplete="off" autofocus="" tabindex="0" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                    <span class="input-group-addon">
+                      <a href="#" class="btn-block" style="">button</a>
+                    </span>
+            </div>
+        </form>
+         -->
+
+
+        <div class="input-group col-md-12" style="margin-top:0px;positon:relative">
+               <input type="text" class="form-control"placeholder="搜索公司名称，例如：物产云商有限公司" >
+                    <span class="input-group-btn">
+                       <button class="btn btn-info btn-search">查找</button>
+                    </span>
+         </div>
+            <!--尝试更换class内容，class="hidden"  或 form-group col-md-6-->
+          <div class="{{ hello }}" >
+              <div class="input-group col-md-4" style="margin-top:0px;positon:relative">
+               <input type="text" class="form-control" id="validateCode" name="validateCode" placeholder="四位字符验证码">
+                    <span class="input-group-btn">
+                      <img id="captcha" src='data:image/jpg;base64,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'>
+                    </span>
+              </div>
+          </div>
+     </div>
+    </div>
+   </div>
+ </body>
+</html>
