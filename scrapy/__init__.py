@@ -1,147 +1,26 @@
+import json
 import re
 import sys
 import time
 
-import json
-import pymysql
-import os,django
-from django.http import HttpResponse
-import xlrd
-from xlutils.copy import copy
+
+
 from bs4 import BeautifulSoup
+from django.http import HttpResponse
+from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium import webdriver
-import flask,json
-import os
-
 from selenium.webdriver.support.wait import WebDriverWait
 
+
 # 初始化公司名称，用于记录异常
+from scrapy.myException.myException import *
+from scrapy.sql.sql import *
+from scrapy.util.util import *
+
 companyCode = "null"
-
-
-# chrome浏览器异常
-class chromeError(Exception):
-    def __init__(self, ErrorInfo):
-        super().__init__(self)  # 初始化父类
-        self.errorinfo = ErrorInfo
-
-    def __str__(self):
-        return self.errorinfo
-
-
-# 网络异常
-class netError(Exception):
-    def __init__(self, ErrorInfo):
-        super().__init__(self)  # 初始化父类
-        self.errorinfo = ErrorInfo
-
-    def __str__(self):
-        return self.errorinfo
-
-# 拼装sql数据异常
-class sqlError(Exception):
-    def __init__(self, ErrorInfo):
-        super().__init__(self)  # 初始化父类
-        self.errorinfo = ErrorInfo
-
-    def __str__(self):
-        return self.errorinfo
-
-# 验证码失败提示定位
-class codeError(Exception):
-    def __init__(self, ErrorInfo):
-        super().__init__(self)  # 初始化父类
-        self.errorinfo = ErrorInfo
-
-    def __str__(self):
-        return self.errorinfo
-
-
-# sessionId生成失败
-class sessionIdError(Exception):
-    def __init__(self, ErrorInfo):
-        super().__init__(self)  # 初始化父类
-        self.errorinfo = ErrorInfo
-
-    def __str__(self):
-        return self.errorinfo
-
-
-# 验证码成功
-class okException(Exception):
-    def __init__(self, ErrorInfo):
-        super().__init__(self)  # 初始化父类
-        self.errorinfo = ErrorInfo
-
-    def __str__(self):
-        return self.errorinfo
-
-
-# 检查sheet名字，如果没有，就创建，并且返回list<tuple>,tuple:(index,sheetname)
-def checkSheetName(sheetsName, excelPath):
-    # 初始化返回值
-    toReturn = list()
-
-    # 打开读excel
-    readbook = xlrd.open_workbook(excelPath)
-    sheets = readbook.sheet_names()
-
-    # 打开写excel
-    writebook = copy(readbook)  # copy后的readbook就是一个workbook对象
-
-    count = 0
-    # 遍历参数名称
-    for name in sheetsName:
-        # 如果没有，就创建
-        if not (sheets.__contains__(name)):
-            writebook.add_sheet(name)
-            writebook.save(excelPath)
-        toReturn.append((count, name))
-        count = count + 1
-
-    return toReturn
-
-
-# 增加一个新字段
-def checkColumn(workbook, numSheet, info, excelPath):
-    sheet = workbook.sheet_by_index(numSheet)
-    ncols = sheet.ncols  # 列
-
-    # 如果不存在字段，做添加行为
-    if getCol(info, sheet) == -1:
-        newbook = copy(workbook)
-        newsheet = newbook.get_sheet(numSheet)
-        newsheet.write(0, ncols, info)
-        newbook.save(excelPath)
-
-
-# 根据字段，判断列的位置
-def getCol(str, sheet):
-    ncols = sheet.ncols  # 列
-    i = 0
-    while i < ncols:
-        name = sheet.cell(0, i).value  # 获取0行i列的表格值
-        if name == str:
-            return i
-        i = i + 1
-
-    return -1
-
-
-# 根据sheet名称获取pos，可以直接借助checkSheetName的返回值
-def getSheetPos(sheetName, workbook):
-    sheetNames = workbook.sheet_names()
-    count = 0
-    for isheetName in sheetNames:
-        if isheetName == sheetName:
-            return count
-        count = count + 1
-    return -1
-
 
 # 增加一行数据，tableType1
 def addRow1(row_values):
@@ -154,7 +33,6 @@ def addRow1(row_values):
     # 删除最后一个逗号
     toReturn = toReturn[:-1]
     return toReturn,pos
-
 
 # 增加一行数据，tableType2
 def addRow2(values, tableName, companyCode):
@@ -179,6 +57,11 @@ def addRow2(values, tableName, companyCode):
         return toReturn,pos
 
 
+# 测试输出
+def testPrint(inf):
+    print("++++++++++++++++++++")
+    print(inf)
+    print("++++++++++++++++++++")
 
 # 根据中文名字获取英文字段
 def getEnglishName(chinese):
@@ -241,21 +124,6 @@ def getEnglishName(chinese):
 
     # 记录内容至本地文本
 
-
-# 将字符串写入tmp文本
-def myCopy(str):
-    tmp = open("C:/Users/admin/Desktop/tmp1.txt", 'a+', encoding='utf-8')
-    tmp.write(str)
-    tmp.close()
-
-
-# 测试输出
-def testPrint(inf):
-    print("++++++++++++++++++++")
-    print(inf)
-    print("++++++++++++++++++++")
-
-
 def get_track(distance):  # distance为传入的总距离
     # 移动轨迹
     track = []
@@ -286,7 +154,6 @@ def get_track(distance):  # distance为传入的总距离
         track.append(round(move))
     return track
 
-
 def move_to_gap(slider, tracks, browser):  # slider是要移动的滑块,tracks是要传入的移动轨迹
     ActionChains(browser).click_and_hold(slider).perform()
     for x in tracks:
@@ -300,14 +167,6 @@ def pageResource(browser, wait):
     html = browser.find_element_by_xpath("//*").get_attribute("outerHTML")
     print(html)
 
-def connectDB():
-    # 打开数据库连接
-    db = pymysql.connect("localhost", "root", "root", "scrapy", charset='utf8')
-    return db
-
-def closeDB(db):
-    # 关闭数据库连接
-    db.close()
 
 # 查看某段源代码
 def sectionResource(section):
@@ -315,6 +174,7 @@ def sectionResource(section):
     print("//////////////////")
 
 def changVerifiedCode(img):
+
     # 验证码更新
     global browser
     ActionChains(browser).click(img).perform()
@@ -322,7 +182,9 @@ def changVerifiedCode(img):
     # 获取验证图片，base64编码，可以通过html展示
     img = browser.find_element_by_xpath("//div[@id='nc_1__imgCaptcha_img']/img")
     verifiedCode = img.get_attribute("src")
-    return verifiedCode
+    res = {'msg': '信息', 'msg_code': 1000, 'data': verifiedCode}  # 1000表示成功
+
+    return HttpResponse(json.dumps(res, ensure_ascii=False))
 
 
 #判断验证码信息，如果正确，点击进入搜索页面
@@ -375,22 +237,14 @@ def checkVerifiedCode(code,sessionTime=0.4):
         flag = 0
         return flag
 
-def requestLogin():
-    global browser
-    global wait
-    global chromeDir
-    global loginDir
-    global acount
-    global password
-
+def requestLogin(browser,wait,chromeDir,acount,password,loginDir):
     searchDir = chromeDir
 
     browser = webdriver.Chrome(searchDir)
 
     try:
         # 设置浏览器需要打开的url
-        url = loginDir
-        browser.get(url)
+        browser.get(loginDir)
 
         # 默认浏览器等待时间100秒
         wait = WebDriverWait(browser, 100)
@@ -422,7 +276,7 @@ def requestLogin():
             # 获取验证图片，base64编码，可以通过html展示
             img = browser.find_element_by_xpath("//div[@id='nc_1__imgCaptcha_img']/img")
             verifiedCode = img.get_attribute("src")
-            return verifiedCode
+            return verifiedCode,browser,wait,img
 
 
         except sessionIdError as e:
@@ -435,10 +289,8 @@ def requestLogin():
         raise TimeoutException(e.msg)
 
 # 搜索栏搜索公司信息
-def searchOne( companyCode):
+def searchOne(companyCode,browser,wait):
     try:
-        global browser
-        global wait
 
         # 等待搜索框出现
         wait.until(EC.presence_of_element_located((By.ID, "searchkey")))
@@ -451,14 +303,12 @@ def searchOne( companyCode):
         doSearch = browser.find_element_by_id("V3_Search_bt")
         doSearch.click()
 
-
+        return browser,wait
     except netError as e:
         raise netError("网络不稳定，请重新连接")
 
 
-def selectForOne(companyCode):
-    global wait
-    global browser
+def selectForOne(companyCode, browser, wait):
     resultNum='0'
 
     # 等待结果数量显示
@@ -503,7 +353,7 @@ def selectForOne(companyCode):
         wait.until(EC.presence_of_all_elements_located)
         # pageResource(browser)
 
-        return resultNum
+        return resultNum, browser, wait
 
 # 从搜索结果中选择公司，返回相关链接
 def select(wait, browser, companyCode):
@@ -1059,9 +909,7 @@ def getClassName(name):
         return "ipo_info", "ipo_div"
 
 # 根据每个目录开始爬取内容
-def beginNav():
-    global browser
-    global wait
+def beginNav( browser, wait):
 
     # 获取所有目录项目
     navs = browser.find_elements_by_xpath("//a[@class='company-nav-head ']")
@@ -1145,8 +993,8 @@ def contentPage(soup, option):
 
 def insertInfo(items, companyCode,dic):
     # 解析字段和内容
-    sheetNames = list()
-    sheetKeysValues = list()  # list<tableType,keys,values,tableName>
+    tableNames = list()
+    tableKeysValues = list()  # list<tableType,keys,values,tableName>
     print("////////////////")
     # 循环所有的模块
     for item in items:
@@ -1162,7 +1010,7 @@ def insertInfo(items, companyCode,dic):
             else:
                 tableName = x[0].__str__()
 
-            sheetNames.append(tableName)
+            tableNames.append(tableName)
 
             # print("tableName: " +tableName)
             info = x[1]
@@ -1184,7 +1032,7 @@ def insertInfo(items, companyCode,dic):
                 keys.append("module_name")
                 keys.append("company_name")
 
-                sheetKeysValues.append((tableType, keys, values, tableName))
+                tableKeysValues.append((tableType, keys, values, tableName))
 
             # 判断，数字1为左右类型table
             elif tableType == 0:
@@ -1197,7 +1045,7 @@ def insertInfo(items, companyCode,dic):
                 keys.append("module_name")
                 keys.append("company_name")
 
-                sheetKeysValues.append((tableType, keys, values, tableName))
+                tableKeysValues.append((tableType, keys, values, tableName))
 
         print("----------")
         # print("table name: "+item[1][0].__str__())
@@ -1206,11 +1054,11 @@ def insertInfo(items, companyCode,dic):
         # print("----------")
         # print("table info: " + item[1][1][1].__str__())
 
-    print(sheetKeysValues)
+    print(tableKeysValues)
     print("////////////////")
 
     # 遍历所有的模块
-    for i in sheetKeysValues:
+    for i in tableKeysValues:
         tableType = i[0]
         keys = i[1]
         values = i[2]
@@ -1248,9 +1096,7 @@ def insertInfo(items, companyCode,dic):
             finalSql = "insert into" + dic[tableName]+sqlkeys+" values "+values
             print(finalSql)
 
-def doScrapyForOneKey(key):
-        global browser
-        global wait
+def doScrapyForOneKey(key,browser,wait):
         # 第一个公司，名称
         companyCode = key
 
@@ -1259,14 +1105,14 @@ def doScrapyForOneKey(key):
         ###############################
         # 搜索公司信息
         print("-----开始搜索-----")
-        searchOne(companyCode)
+        browser, wait=searchOne(companyCode,browser,wait)
         print("-----结束搜索-----")
 
         ###############################
         # 进入主搜索结果列表页面
         ###############################
         print("-----开始对搜索结果进行操作-----")
-        resultNum = selectForOne(companyCode)
+        resultNum, browser, wait = selectForOne(companyCode, browser, wait)
         print("-----结束对搜索结果进行操作-----")
         ###############################
         # 获取所有菜单链接
@@ -1280,7 +1126,7 @@ def doScrapyForOneKey(key):
 
 
         print("-----开始对公司信息目录进行操作-----")
-        items = beginNav()
+        items = beginNav( browser, wait)
         print("-----结束对公司信息目录进行操作-----")
         print("===========写入内容至本地文本=================")
         #writeResult(output, items, companyCode)
@@ -1305,71 +1151,24 @@ def doScrapyForOneKey(key):
         #返回内容
         return items
 
-def preBegin():
-    global browser
-    global wait
-    global key
-    global chromeDir
-    global acount
-    global password
-    global loginDir
-    global key
-
-    # login
-    print("-----开始登录-----")
-    verifiedCode = requestLogin()
-    print("-----结束登录-----")
-
-    return verifiedCode
-
     #return doScrapyForOneKey(key,browser, wait)
 
 ########################################################
-browser = ""
-wait = ""
-key = ""
-img = ""
-chromeDir = "C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe"  # 这里是你的驱动的绝对地址
-# firefoxDir="D:/firefox/geckodriver.exe"
-loginDir = "https://www.qichacha.com/user_login"
 
-acount = "13958127726"
-password = "87096927"
+# browser = ""
+# wait = ""
+# key = ""
+# img = ""
+# chromeDir = "C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe"  # 这里是你的驱动的绝对地址
+# # firefoxDir="D:/firefox/geckodriver.exe"
+# loginDir = "https://www.qichacha.com/user_login"
+#
+# acount = "13958127726"
+# password = "87096927"
 
 #server=flask.Flask(__name__)#__name__代表当前的python文件。把当前的python文件当做一个服务启动
 
-def insertDB(db,sql):
-    # 使用cursor()方法获取操作游标
-    cursor = db.cursor()
 
-    affectRows = cursor.execute(sql)
-
-    if(affectRows<=0):
-        raise Exception("affectRows<=0")
-
-    db.commit()
-
-def selectOneSql(sql,db):
-    # 使用cursor()方法获取操作游标
-    cursor = db.cursor()
-
-    affectRows = cursor.execute(sql)
-    data = cursor.fetchone()
-
-    db.commit()
-
-    return data,affectRows
-
-def selectAllSql(sql,db):
-    # 使用cursor()方法获取操作游标
-    cursor = db.cursor()
-
-    affectRows = cursor.execute(sql)
-    data = cursor.fetchall()
-
-    db.commit()
-
-    return data,affectRows
 
 #判断公司名称是否存在
 def checkCompany(key):
@@ -1484,14 +1283,7 @@ def refillCompanyTableInfo(dbName):
                 print(tableName+"///////////////////")
     closeDB(db)
 
-#写入默认内容，用于未查到信息结果
-def defaultWrite(outputDir,info):
-    f = open(outputDir, 'a+',encoding='utf-8')
-    for sql in info:
-        f.write(sql +'\n')  # 加\n换行显示
 
-    f.write("end" + '\n')  # 加\n换行显示
-    f.close()
 
 def updateSql(sql,db):
     # 使用cursor()方法获取操作游标
@@ -1532,12 +1324,13 @@ def testx():
 
 #refillCompanyTableInfo("scrapy")
 
-
+# preBegin()
+# time.sleep(2)
+# changVerifiedCode()
 
 #@server.route('/preBegin',methods=['post'])#只有在函数前加上@server.route (),这个函数才是个接口，不是一般的函数
-def requestInfoHttpResponseJson(input):
-    global key
-    key = input
+def requestInfoHttpResponseJson(browser,wait,key,chromeDir,acount,password,loginDir):
+    toReturn = dict()
     if key=="" or key == None:
         res = {'msg': '必填字段未填，请查看接口文档', 'msg_code': 1001}  # 1001表示必填接口未填
     else:
@@ -1547,18 +1340,23 @@ def requestInfoHttpResponseJson(input):
             if flag >= 1:
                 res = {'msg': '信息', 'msg_code': 1000,'data':data}  # 1000表示成功
             else:
-                verifiedCode = preBegin()
-                res = {'msg': '验证码', 'msg_code': 1000,'data':verifiedCode}  # 1000表示成功
+                print("-----开始登录-----")
+                verifiedCode, browser, wait, imgObj = requestLogin(browser, wait, key, chromeDir, acount, password,
+                                                                   loginDir)
+                print("-----结束登录-----")
+                res = {'msg': '验证码', 'msg_code': 1001, 'data': verifiedCode}  # 1001表示成功,返回验证码
+                toReturn["browser"] = browser
+                toReturn["wait"] = wait
+                toReturn["imgObj"] = imgObj
         except netError as e:
             res = {'msg': '网络不稳定', 'msg_code': 1002}  # 1002表示网络错误
             browser.close()
 
-    return HttpResponse(json.dumps(res,ensure_ascii=False))
+    return HttpResponse(json.dumps(res,ensure_ascii=False)),toReturn
 
 
-def requestInfo(input):
-    global key
-    key = input
+def requestInfo(browser,wait,key,chromeDir,acount,password,loginDir):
+    toReturn = dict()
     if key=="" or key == None:
         res = {'msg': '必填字段未填，请查看接口文档', 'msg_code': 1003}  # 1003表示必填接口未填
     else:
@@ -1568,13 +1366,18 @@ def requestInfo(input):
             if flag >= 1:
                 res = {'msg': '信息', 'msg_code': 1000,'data':data}  # 1000表示成功，返回信息
             else:
-                verifiedCode = preBegin()
+                print("-----开始登录-----")
+                verifiedCode,browser,wait,imgObj = requestLogin(browser,wait,key,chromeDir,acount,password,loginDir)
+                print("-----结束登录-----")
                 res = {'msg': '验证码', 'msg_code': 1001,'data':verifiedCode}  # 1001表示成功,返回验证码
+                toReturn["browser"]=browser
+                toReturn["wait"]=wait
+                toReturn["imgObj"] = imgObj
         except netError as e:
             res = {'msg': '网络不稳定', 'msg_code': 1002}  # 1002表示网络错误
             browser.close()
     print(res)
-    return res
+    return res,toReturn
 # @server.route('/checkCode',methods=['post'])#只有在函数前加上@server.route (),这个函数才是个接口，不是一般的函数
 # def checkCode():
 #     global browser

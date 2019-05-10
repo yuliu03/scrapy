@@ -21,6 +21,7 @@ from django.conf.urls import url
 admin.autodiscover()
 urlpatterns = [
     url(r'^hello/$', hello),
-    url(r'^requestInfoHttpResponseJson/',requestInfoHttpResponseJson, name='test_api'),
-    url(r'^renderHtml/',renderHtml, name='renderHtml')
+    url(r'^requestInfo/',requestInfo, name='requestInfo'),
+    url(r'^renderHtml/',renderHtml, name='renderHtml'),
+    url(r'^changeCode/', changeCode, name='changeCode')
 ]
