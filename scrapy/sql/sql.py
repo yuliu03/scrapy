@@ -42,3 +42,15 @@ def selectAllSql(sql,db):
     db.commit()
 
     return data,affectRows
+
+
+
+
+def updateSql(sql,db):
+    # 使用cursor()方法获取操作游标
+    cursor = db.cursor()
+
+    affectRows = cursor.execute(sql)
+
+    db.commit()
+    return affectRows

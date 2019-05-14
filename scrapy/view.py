@@ -1,6 +1,26 @@
 from django.http import HttpResponse, JsonResponse
 from scrapy import *
 from django.shortcuts import render
+import uuid
+
+chromeDir = "C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe"  # 这里是你的驱动的绝对地址
+# firefoxDir="D:/firefox/geckodriver.exe"
+loginDir = "https://www.qichacha.com/user_login"
+acount = "13958127726"
+password = "87096927"
+
+sessionInfo={}
+
+def delDict(key):
+    if key in sessionInfo.keys():
+        del sessionInfo[key]
+
+def checkSessionInfo(key):
+    if key in sessionInfo.keys():
+        return sessionInfo[key]
+    else:
+        return -1
+
 
 def hello(request):
     return HttpResponse("Hello world")
@@ -8,32 +28,31 @@ def hello(request):
 def requestInfo(request):
     browser = ""
     wait = ""
-    chromeDir = "C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe"  # 这里是你的驱动的绝对地址
-    # firefoxDir="D:/firefox/geckodriver.exe"
-    loginDir = "https://www.qichacha.com/user_login"
-    acount = "13958127726"
-    password = "87096927"
-
-    print(request.body)
-    print(request.POST)
     data=json.loads(request.body.decode("utf8"))
-    print(data)
     key = data.get("key")
     print(key)
-    response,infoDic=requestInfoHttpResponseJson(browser,wait,key,chromeDir,acount,password,loginDir)
+
+    #infoDic: browser,wait,imgObj
+    response,infoDic=requestInfoHttpResponseJson(key,chromeDir,acount,password,loginDir)
+    sessionInfo[infoDic["myid"]] = infoDic
     print(response)
+
     response["Access-Control-Allow-Origin"] = "*"
     response["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
     response["Access-Control-Max-Age"] = "1000"
     response["Access-Control-Allow-Headers"] = "*"  # 加入这行
+
+
     return response
 
 def renderHtml(request):
+    browser=""
+    wait=""
     data = json.loads(request.body.decode("utf8"))
     print(data)
     key = data.get("key")
     print(key)
-    data,infoDic=requestInfo( browser,wait,key,chromeDir,acount,password,loginDir)
+    data,infoDic=requestInfoScrapy(key,chromeDir,acount,password,loginDir)
     if data['msg_code']==1001:
         print(data['data'])
     context = {}
@@ -43,13 +62,39 @@ def renderHtml(request):
     return render(request, 'index.html', context)
 
 def changeCode(request):
+    data = json.loads(request.body.decode("utf8"))
     print(request.body)
     print(request.POST)
-    response = changVerifiedCode(imgObj)
+
+    myid = data.get("myid")
+    print(myid)
+    oldInfoDic = sessionInfo[myid]
+    response,newinfoDic = changVerifiedCode(oldInfoDic)
     print(response)
+    sessionInfo[myid] = newinfoDic
     response["Access-Control-Allow-Origin"] = "*"
     response["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
     response["Access-Control-Max-Age"] = "1000"
     response["Access-Control-Allow-Headers"] = "*"  # 加入这行
 
     return response
+
+
+def doScrapy(request):
+    data = json.loads(request.body.decode("utf8"))
+    print(request.body)
+    print(request.POST)
+    verifiedCode = data.get("verifiedCode")
+    print(verifiedCode)
+    myid = data.get("myid")
+    print(myid)
+
+    flag,infoDic = checkVerifiedCode(verifiedCode,sessionInfo[myid]["browser"],sessionInfo[myid]["wait"],myid,sessionTime=0.4)
+    if flag == -1:
+        print("验证码为生成")
+    elif flag == -2:
+        print("未生成session id")
+
+    else:
+        doScrapyForOneKey(sessionInfo[myid]["companyCode"],sessionInfo[myid]["browser"],sessionInfo[myid]["wait"])
+

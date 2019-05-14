@@ -2,25 +2,25 @@ import json
 import re
 import sys
 import time
-
-
+import uuid
 
 from bs4 import BeautifulSoup
 from django.http import HttpResponse
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
-from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 
 # 初始化公司名称，用于记录异常
+from scrapy.detailStructureScrapy.detailStructureScrapy import *
 from scrapy.myException.myException import *
+from scrapy.serviceForDatas.serviceForData import *
 from scrapy.sql.sql import *
 from scrapy.util.util import *
+from scrapy.loginUtil.login import *
 
-companyCode = "null"
 
 # 增加一行数据，tableType1
 def addRow1(row_values):
@@ -56,143 +56,30 @@ def addRow2(values, tableName, companyCode):
 
         return toReturn,pos
 
-
-# 测试输出
-def testPrint(inf):
-    print("++++++++++++++++++++")
-    print(inf)
-    print("++++++++++++++++++++")
-
-# 根据中文名字获取英文字段
-def getEnglishName(chinese):
-    if ('基本信息' == chinese):
-        return 'basic_info'
-    elif ('工商信息' == chinese):
-        return 'basic_infoGS'
-    elif ('股东信息' == chinese):
-        return 'shareholder_info'
-    elif ('主要人员' == chinese):
-        return 'main_staff'
-    elif ('变更记录' == chinese):
-        return 'change_log'
-    elif ('最终受益人' == chinese):
-        return 'ultimate_beneficiary'
-    elif ('控股企业' == chinese):
-        return 'holding_company'
-    elif ('上市信息' == chinese):
-        return 'ipo_info'
-    elif ('重要人员' == chinese):
-        return 'important_person'
-    elif ('十大股东' == chinese):
-        return 'top_ten_shareholders'
-    elif ('公司高管' == chinese):
-        return 'company_executives'
-    elif ('经营状况' == chinese):
-        return 'run_state'
-    elif ('税务信用' == chinese):
-        return 'tax_credit'
-    elif ('进出口信用' == chinese):
-        return 'import_and_export_credit'
-    elif ('经营风险' == chinese):
-        return 'run_risk'
-    elif ('股权出质' == chinese):
-        return 'equity'
-    elif ('行政处罚 [工商局]' == chinese):
-        return 'administrative_penalties'
-    elif ('企业发展' == chinese):
-        return 'companyDev'
-    elif ('股东（发起人）出资信息' == chinese):
-        return 'shareholder_sponsor'
-    elif ('对外投资信息' == chinese):
-        return 'foreign_investment_information'
-    elif ('历史信息' == chinese):
-        return 'history_info'
-    elif ('历史对外投资' == chinese):
-        return 'historical_foreign_investment'
-    elif ('历史股东' == chinese):
-        return 'historical_shareholder'
-    elif ('历史被执行人' == chinese):
-        return 'historical executor'
-    elif ('历史失信被执行人' == chinese):
-        return 'historical_loss_of_trustee'
-    elif ('法律诉讼' == chinese):
-        return 'legal_action'
-    elif ('开庭公告' == chinese):
-        return 'opening_notice'
-    elif ('法院公告' == chinese):
-        return 'court_notice'
-
-    # 记录内容至本地文本
-
-def get_track(distance):  # distance为传入的总距离
-    # 移动轨迹
-    track = []
-    # 当前位移
-    current = 0
-    # 减速阈值
-    mid = distance * 4 / 5
-    # 计算间隔
-    t = 0.2
-    # 初速度
-    v = 0
-
-    while current < distance:
-        if current < mid:
-            # 加速度为2
-            a = 2
-        else:
-            # 加速度为-2
-            a = -3
-        v0 = v
-        # 当前速度
-        v = v0 + a * t
-        # 移动距离
-        move = v0 * t + 1 / 2 * a * t * t
-        # 当前位移
-        current += move
-        # 加入轨迹
-        track.append(round(move))
-    return track
-
-def move_to_gap(slider, tracks, browser):  # slider是要移动的滑块,tracks是要传入的移动轨迹
-    ActionChains(browser).click_and_hold(slider).perform()
-    for x in tracks:
-        ActionChains(browser).move_by_offset(xoffset=x, yoffset=0).perform()
-    time.sleep(0.5)
-    ActionChains(browser).release().perform()
-
-# 查看所有页面源代码
-def pageResource(browser, wait):
-    wait.until(EC.presence_of_all_elements_located)
-    html = browser.find_element_by_xpath("//*").get_attribute("outerHTML")
-    print(html)
-
-
-# 查看某段源代码
-def sectionResource(section):
-    print(section.get_attribute("outerHTML"))
-    print("//////////////////")
-
-def changVerifiedCode(img):
-
+#更换验证码
+def changVerifiedCode(infoDic):
+    #sessionInfo[myid]["wait"],myid
+    img=infoDic["imgObj"]
+    browser=infoDic["browser"]
+    wait=infoDic["wait"]
     # 验证码更新
-    global browser
     ActionChains(browser).click(img).perform()
     time.sleep(0.5)
     # 获取验证图片，base64编码，可以通过html展示
     img = browser.find_element_by_xpath("//div[@id='nc_1__imgCaptcha_img']/img")
     verifiedCode = img.get_attribute("src")
-    res = {'msg': '信息', 'msg_code': 1000, 'data': verifiedCode}  # 1000表示成功
+    res = {'msg': '验证码', 'msg_code': 1001, 'data': verifiedCode}  # 1001表示成功,返回验证码
 
-    return HttpResponse(json.dumps(res, ensure_ascii=False))
+    infoDic["browser"] = browser
+    infoDic["wait"] = wait
+    infoDic["imgObj"] = img
 
+
+    return HttpResponse(json.dumps(res, ensure_ascii=False)),infoDic
 
 #判断验证码信息，如果正确，点击进入搜索页面
-def checkVerifiedCode(code,sessionTime=0.4):
+def checkVerifiedCode(code,browser,wait,myid,sessionTime=0.4):
         try:
-            global browser
-            global wait
-
             # 填写验证码信息
             inputCode = browser.find_element_by_id("nc_1_captcha_input")
             inputCode.send_keys(code)
@@ -235,9 +122,15 @@ def checkVerifiedCode(code,sessionTime=0.4):
             raise codeError(e.errorinfo)
 
         flag = 0
-        return flag
 
-def requestLogin(browser,wait,chromeDir,acount,password,loginDir):
+        toReturn = {}
+        toReturn["browser"] = browser
+        toReturn["wait"] = wait
+        toReturn["myid"] = myid
+        return flag,toReturn
+
+#请求获取验证码信息
+def requestLogin(chromeDir,acount,password,loginDir):
     searchDir = chromeDir
 
     browser = webdriver.Chrome(searchDir)
@@ -291,7 +184,6 @@ def requestLogin(browser,wait,chromeDir,acount,password,loginDir):
 # 搜索栏搜索公司信息
 def searchOne(companyCode,browser,wait):
     try:
-
         # 等待搜索框出现
         wait.until(EC.presence_of_element_located((By.ID, "searchkey")))
 
@@ -304,10 +196,11 @@ def searchOne(companyCode,browser,wait):
         doSearch.click()
 
         return browser,wait
+
     except netError as e:
         raise netError("网络不稳定，请重新连接")
 
-
+#匹配搜索结果列表内容和搜索具体字段
 def selectForOne(companyCode, browser, wait):
     resultNum='0'
 
@@ -325,57 +218,8 @@ def selectForOne(companyCode, browser, wait):
         resultNum='-1'
         print("[companyCode: " + companyCode + "]"
               + "result company name: " + resultName)
-        return resultNum
-
-    else:
-        # 确认找到结果
-        resultNum = num
-
-        # 等待列表信息展示结束
-        wait.until(EC.presence_of_element_located((By.ID, "search-result")))
-
-        # 打印页面内容
-        # pageResource(browser)
-
-        # 获取列表信息
-        resultList = browser.find_element_by_xpath("//tbody[@id='search-result']")
-
-        # 获取每条信息明细
-        trs = resultList.find_elements_by_xpath(".//tr")
-
-        # 默认第一条
-        firstTd = trs[0].find_elements_by_xpath(".//td")
-        # print(firstTd)
-        a = firstTd[2].find_elements_by_xpath("./a")[0].get_attribute("href")
-
-        # 点击进入公司明细页面
-        browser.get(a)
-        wait.until(EC.presence_of_all_elements_located)
-        # pageResource(browser)
-
         return resultNum, browser, wait
 
-# 从搜索结果中选择公司，返回相关链接
-def select(wait, browser, companyCode):
-    # resultNum 判断搜索结果数量
-    resultNum = '0'
-
-    # 等待结果数量显示
-    # pageResource(browser,wait)
-    # wait.until(EC.presence_of_element_located((By.ID, "//*[@id='countOld']")))
-    # 获取结果数量
-    num = browser.find_element_by_xpath("//*[@id='countOld']/span").text
-    if num == '0':  # 判断是否有结果
-        print("no result: " + "[result number: " + num + "]")
-
-        return browser, wait, resultNum
-
-    resultName = browser.find_element_by_xpath("//*[@id='search-result']/tr[1]/td[3]/a").text
-    if resultName != companyCode:  # 判断字段是否绝对一样
-        print("[companyCode: " + companyCode + "]"
-              + "result company name: " + resultName)
-        return browser, wait, resultNum
-
     else:
         # 确认找到结果
         resultNum = num
@@ -395,477 +239,17 @@ def select(wait, browser, companyCode):
         # 默认第一条
         firstTd = trs[0].find_elements_by_xpath(".//td")
         # print(firstTd)
+        # 获取链接
         a = firstTd[2].find_elements_by_xpath("./a")[0].get_attribute("href")
-        # 输出所有href
-        # count=0
-        # for tr in trs:
-        #     print(count)
-        #     #获取链接位置
-        #     tds = tr.find_elements_by_xpath(".//td")
-        #     a=tds[2].find_elements_by_xpath("./a")[0]
-        #     print(sectionResource(a))
-        #     #print(sectionResource(tds[2]))
-        #     count=count+1
+
         # 点击进入公司明细页面
         browser.get(a)
         wait.until(EC.presence_of_all_elements_located)
         # pageResource(browser)
 
-        return browser, wait, resultNum
+        #resultNum 为查询结果数量，因为是模糊查询，所以会出现多个结果
+        return resultNum, browser, wait
 
-# 上市信息--基本信息
-def ipoInfo_basic(sec):
-    tds = sec.find_all('tbody')[0].find_all('td')
-    dic = tableInfo(tds)
-    return dic
-
-# 上市信息
-def ipoInfo(soup):
-    ss = soup.findAll('section', {'class': re.compile('panel')})
-
-    # 初始化上市信息页面内容储存空间
-    ipoInfo = list()
-    for sec in ss:
-        try:
-            dic = None
-            if (sec.div.h3.text.strip() == "重要人员"):
-                print("重要人员")
-                dic = ipoInfo_basic(sec)
-            elif (sec.div.h3.text.strip() == "十大股东"):
-                print("十大股东")
-                dic = actionInfo(sec)
-            elif (sec.div.h3.text.strip() == "公司高管"):
-                print("公司高管")
-                dic = actionInfo(sec)
-
-            # 将内容插入上市信息页面内容储存空间
-            if dic != None:
-                ipoInfo.append((sec.div.h3.text.strip(), dic))
-        except AttributeError:
-            pass
-    return ipoInfo
-
-# 基本信息模块信息爬取
-def rowTableInfo(sec):
-    tbody = sec.find('tbody')
-
-    trs = tbody.find_all('tr', recursive=False)
-
-    inf = tableInfo2(trs)
-
-    return inf
-
-# 获取经营状况页面内容
-def runState(soup):
-    ss = soup.findAll('section', {'class': re.compile('panel')})
-
-    # 初始化经营状况页面内容储存空间
-    runStateInfo = list()
-
-    for sec in ss:
-        try:
-            dic = None
-            if (sec.div.h3.text.strip() == "税务信用"):
-                print("税务信用")
-                dic = actionInfo(sec)
-            if (sec.div.h3.text.strip() == "进出口信用"):
-                print("进出口信用")
-                dic = actionInfo(sec)
-
-            # 将内容插入经营状况页面内容储存空间
-            if dic != None:
-                runStateInfo.append((sec.div.h3.text.strip(), dic))
-        except AttributeError:
-            pass
-
-    return runStateInfo
-
-# 获取经营风险页面内容
-def runRisk(soup):
-    # print(soup)
-    ss = soup.findAll('section', {'class': re.compile('panel')})
-
-    # 初始化经营风险页面内容储存空间
-    runRiskInfo = list()
-    for sec in ss:
-        try:
-            dic = None
-            if (sec.div.h3.text.strip() == "股权出质"):
-                print("股权出质")
-                dic = actionInfo(sec)
-            elif (sec.div.h3.text.strip() == "行政处罚 [工商局]"):
-                print("行政处罚 [工商局]")
-                dic = actionInfo(sec)
-
-            # 将经营风险信息插入信息储存表
-            if dic != None:
-                runRiskInfo.append((sec.div.h3.text.strip(), dic))
-
-        except AttributeError:
-            pass
-
-    return runRiskInfo
-
-# 获取企业发展页面内容
-def companyDev(soup):
-    reportSeccion = soup.find('section', {'id': 'report'})
-
-    if reportSeccion == None:
-        return None
-
-    # 获取多年的年报，时间越晚的，排位越后
-    ss = reportSeccion.findAll('div', {'class': re.compile('tab-pane')})
-
-    # 默认只对最近一年的操作
-    recentlyReport = ss[0]
-
-    # 获取所有抬头代码
-    h3s = recentlyReport.findAll('h3')
-
-    # 获取所有内容
-    tables = recentlyReport.findAll('table')
-
-    if len(h3s) != len(tables):
-        raise RuntimeError("字段内容数量是否和字段名称数量不一致")
-
-    else:
-
-        # 初始化企业发展页面内容储存空间
-        companyDevInfo = list()
-
-        count = 0
-        for x in h3s:
-            dic = None
-            if x.text.strip() == "股东（发起人）出资信息":
-                print("股东（发起人）出资信息")
-                dic = actionInfo(tables[count])
-
-            elif x.text.strip() == "对外投资信息":
-                print("对外投资信息")
-                dic = actionInfo(tables[count])
-
-            count = count + 1
-
-            # 将企业发展信息插入信息储存表
-            if dic != None:
-                companyDevInfo.append((x.text.strip(), dic))
-
-        return companyDevInfo
-
-# 获取知识产权页面内容(暂时无需求)
-def IntellectualPro(soup):
-    pass
-
-# 获取历史信息页面信息
-def historyInfo(soup):
-    ss = soup.findAll('section', {'class': re.compile('panel')})
-
-    # 初始化历史信息页面内容储存空间
-    historyInfo = list()
-
-    for sec in ss:
-        try:
-            dic = None
-            if (sec.div.h3.text.strip() == "历史对外投资"):
-                print("历史对外投资")
-                dic = actionInfo(sec)
-            elif (sec.div.h3.text.strip() == "历史股东"):
-                print("历史股东")
-                dic = actionInfo(sec)
-            elif (sec.div.h3.text.strip() == "历史被执行人"):
-                print("历史被执行人")
-                dic = actionInfo(sec)
-            elif (sec.div.h3.text.strip() == "历史失信被执行人"):
-                print("历史失信被执行人")
-                dic = actionInfo(sec)
-
-            # 将企业历史信息插入信息储存表
-            if dic != None:
-                historyInfo.append((sec.div.h3.text.strip(), dic))
-
-        except AttributeError:
-            pass
-
-    return historyInfo
-
-# 法律诉讼信息内容选择
-def legalAction(soup):
-    ss = soup.findAll('section', {'class': re.compile('panel b-a')})
-    # 初始化法律诉讼信息储存表
-    legalInfo = list()
-    for sec in ss:
-        try:
-            dic = None
-            if (sec.div.h3.text.strip() == "开庭公告"):
-                print("开庭公告")
-                dic = actionInfo(sec)
-            elif (sec.div.h3.text.strip() == "法院公告"):
-                print("法院公告")
-                dic = actionInfo(sec)
-
-            # 将信息插入法律诉讼信息储存表
-            if dic != None:
-                legalInfo.append((sec.div.h3.text.strip(), dic))
-
-        except AttributeError:
-            pass
-
-    return legalInfo
-
-# 辅助获取信息模块信息爬取
-def actionInfo(sec):
-    tbody = sec.find('tbody')
-
-    trs = tbody.find_all('tr', recursive=False)
-    try:
-        inf = tableInfo2(trs)
-        return inf
-    except RuntimeError as e:
-        print(e.args)
-        print(sec)
-
-# 基本信息--工商信息
-def basicInfoGS(tr):
-    tds = tr.find_all('tbody')[1].find_all('td')
-    dic = tableInfo(tds)
-    return dic
-
-# 基本信息模块内容选择
-def basicInfo(soup):
-    ss = soup.findAll('section', {'class': re.compile('panel b-a')})
-
-    # 初始化模块内容储存空间
-    businessInfo = list()
-
-    for sec in ss:
-        try:
-            dic = None
-            if (sec.div.h3.text.strip() == "工商信息"):
-                print("工商信息")
-                dic = basicInfoGS(sec)
-            elif (sec.div.h3.text.strip() == "股东信息"):
-                print("股东信息")
-                dic = rowTableInfo(sec)
-            elif (sec.div.h3.text.strip() == "主要人员"):
-                print("主要人员")
-                dic = rowTableInfo(sec)
-            elif (sec.div.h3.text.strip() == "变更记录"):
-                print("变更记录")
-                dic = rowTableInfo(sec)
-            elif (sec.div.h3.text.strip() == "最终受益人"):
-                print("最终受益人")
-                dic = rowTableInfo(sec)
-            elif (sec.div.h3.text.strip() == "控股企业"):
-                print("控股企业")
-                dic = rowTableInfo(sec)
-            # elif (sec.div.h3.text.strip() == "财务简析"):
-            #     print("财务简析")
-            # print(sec)
-            # dic = shareholderInfo(sec)
-            # print(dic)
-            # elif (sec.div.h3.text.strip() == "同业分析"):
-            #     print("同业分析")
-            # print(sec)
-            # dic = shareholderInfo(sec)
-            # print(dic)
-            # 将信息插入基础信息表
-            if dic != None:
-                businessInfo.append((sec.div.h3.text.strip(), dic))
-        except AttributeError:
-            pass
-
-    return businessInfo
-
-# 用于上下形式的table,数据结构{(字段名),(对应内容)...},字段数量和内容数量保持一致
-def tableInfo2(trs):
-    # 初始化数据储存列表
-    inf = list()
-
-    # 获取所有抬头
-    ths = trs[0].find_all('th')
-
-    # 获取字段名称,过滤空格等问题
-    names = list()  # 初始化抬头列表
-    for name in ths:
-        # 方法一：拼接字符串
-        # names+='('+name.text.strip().replace("\n", "").replace("\t", "")+')'
-
-        # 方法二：list直接添加
-        title = tableInfo2Filter(name.text.strip().replace("\n", "").replace("\t", ""))
-
-        names.append(title)
-
-    # 过滤空格等冗余信息,将字段名称加入数据储存列表
-    inf.append(names)
-
-    # 获取字段数量
-    nameSize = len(ths)
-
-    # 方法一：（拼接字符串）删除字段名称，获取字段内容
-    #############################################
-    # del(trs[0])
-    # for tr in trs:
-    #     value=''
-    #     tds=tr.find_all('td',recursive=False)
-    #
-    #     #判断是否有内容
-    #     if len(tds)>0:
-    #         # 初始化内容类数量
-    #         valueSize = 0
-    #         # 获取每一行信息
-    #         for td in tds:
-    #             tmp = ''
-    #             try:
-    #                 tmp += td.find('h3').text.strip().replace("\n", "").replace("\t", "")
-    #             except:
-    #                 tmp += td.text.strip().replace("\n", "").replace("\t", "")
-    #
-    #             if (tmp != ''):
-    #                 # 字段内容类数量加一
-    #                 valueSize += 1
-    #                 value += '(' + tmp + ')'
-    #
-    #         # print("value: ")
-    #         # print(tableInfo2Filter(value))
-    #         # print("-----------------")
-    #
-    #         # 过滤空格等冗余信息,将字段内容加入list
-    #         inf.append(tableInfo2Filter(value))
-    #
-    #         # 每获取一行信息，验证字段内容数量是否和字段名称数量一致
-    #         if (nameSize != valueSize):
-    #             print(ths)
-    #             print("/////")
-    #             print(tds)
-    #             print("/////")
-    #             print(inf)
-    #             raise RuntimeError("字段内容数量是否和字段名称数量不一致")
-    #             break
-    #############################################
-
-    # 方法二：（list直接添加）删除字段名称，获取字段内容
-    ##############################################
-    del (trs[0])
-    for tr in trs:
-        value = list()  # 初始化内容列表
-        tds = tr.find_all('td', recursive=False)
-
-        # 判断是否有内容
-        if len(tds) > 0:
-            # 初始化内容类数量
-            valueSize = 0
-            # 获取每一行信息
-            for td in tds:
-                tmp = ''
-                try:
-                    if td.find('h3').text.strip().replace("\n", "").replace("\t", "") != "":
-                        tmp += '-'
-                    else:
-                        tmp += td.find('h3').text.strip().replace("\n", "").replace("\t", "")
-                except:
-                    tmp += td.text.strip().replace("\n", "").replace("\t", "")
-
-                if (tmp != ''):
-                    # 字段内容类数量加一
-                    valueSize += 1
-                    value.append(tableInfo2Filter(tmp))
-
-            # 过滤空格等冗余信息,将字段内容加入数据储存列表
-            inf.append(value)
-
-            # 每获取一行信息，验证字段内容数量是否和字段名称数量一致
-            if (nameSize != valueSize):
-                print(ths)
-                print("/////")
-                print(tds)
-                print("/////")
-                print(inf)
-                myCopy(companyCode.__str__() + "\n" + tds.__str__() + "\n" + inf.__str__())
-                print("字段内容数量是否和字段名称数量不一致")
-                pass
-    ###############################################
-
-    # 数字1代表表格是上下类型
-    return (1, inf)
-
-# 最基础信息
-def topInf(soup):
-    # 获取公司名
-    try:
-        conpanyname = soup.find('div', {'class': 'row title jk-tip'}).h1.text.strip()
-    except AttributeError:
-        sys.exit('获取不了目标页面内容,爬虫自动退出,请检查目标页面是否正常打开或者自动跳转到首页')
-    # 获取电话、邮箱、官网、公司地址信息
-    row = soup.find('div', {'class': 'dcontent'}).find_all('div', {'class': 'row'})
-    for i in row:
-        # 判断是否i.find('span',{'class':'cdes'})有内容
-        if i.find('span', {'class': 'cdes'}):
-            # 判断获取的i.find('span',{'class':'cdes'})是否为电话
-            if i.find('span', {'class': 'cdes'}).text.strip() == '电话：':
-                try:
-                    tel = i.find('span', {'class': 'cvlu'}).span.text.strip()
-                except AttributeError:
-                    tel = i.find('span', {'class': 'cvlu'}).text.strip()
-                # 获取官网
-                if i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().text.strip() == '官网：':
-                    try:
-                        web = i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().find_next(
-                            'span').a.find_next('a').text.strip()
-                    except AttributeError:
-                        web = i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().find_next(
-                            'span').text.strip()
-            # 判断获取的i.find('span',{'class':'cdes'})是否为邮箱
-            if i.find('span', {'class': 'cdes'}).text.strip() == '邮箱：':
-                try:
-                    email = i.find('span', {'class': 'cvlu'}).text.strip()
-                except AttributeError:
-                    email = '暂无'
-                # 获取地址
-                if i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().text.strip() == '地址：':
-                    try:
-                        address = i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().find_next(
-                            'span').a.text.strip()
-                    except AttributeError:
-                        address = i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().find_next(
-                            'span').text.strip()
-
-# 用于左右形式的table
-def tableInfo(tds):
-    flag = 'key'
-    inf = list()
-    for td in tds:
-        if (flag == 'key'):
-            key = td.text.strip().replace("\n", "").replace("\t", "")
-            flag = 'value'
-        else:
-            value = td.text.strip().replace("\n", "").replace("\t", "")
-            flag = 'key'
-            # add新键值对
-            inf.append((key, tableInfo2Filter(value)))
-
-    # 数字0代表左右表格
-    return (0, inf)
-
-# 过滤无用信息
-def tableInfo2Filter(l):
-    patterns = list()
-
-    # 删除冗余内容
-    patterns.append(re.compile(r'(查看最终受益人>)'))
-    patterns.append(re.compile(r'他投资(\d+)家公司(\s*)>'))
-    patterns.append(re.compile(r'他关联(\d+)家公司(\s*)>'))
-    patterns.append(re.compile(r'查看地图'))
-    patterns.append(re.compile(r'附近公司'))
-
-    # 过滤多余空格
-    patterns.append(re.compile(r'(\s+)'))
-
-    clearInf = l
-    for pattern in patterns:
-        # 根据条件进行处理
-        clearInf = re.sub(pattern, '', clearInf)
-
-    return clearInf
 
 # 方法一：获取所有菜单链接
 def getNav(browser, wait, rootUrl):
@@ -1133,24 +517,16 @@ def doScrapyForOneKey(key,browser,wait):
 
         #获取sql语句拼装信息
         db = connectDB()
-        # 使用cursor()方法获取操作游标
-        cursor = db.cursor()
-        affectRows = cursor.execute("select english,chinese from dictionary")
-        print(affectRows)
-        result = cursor.fetchone()
-        dic = dict()
-        while result != None:
-            dic[result[1]] = result[0]
-            print(result, cursor.rownumber)
-            result = cursor.fetchone()
+
+        #获取字典内容
+        dictionary=getDictionary(db)
 
         #插入内容至db
-        insertInfo(items,companyCode,dic)
+        insertInfo(items,companyCode,dictionary)
 
         db = closeDB(db)
         #返回内容
         return items
-
     #return doScrapyForOneKey(key,browser, wait)
 
 ########################################################
@@ -1171,155 +547,6 @@ def doScrapyForOneKey(key,browser,wait):
 
 
 #判断公司名称是否存在
-def checkCompany(key):
-    db=connectDB()
-
-    #拼装sql语句
-    newkey = "'"+key+"'"
-    sql="select company_name from companies where company_name = "+newkey
-    data,flag=selectOneSql(sql,db)
-    if flag == 1:
-        data, flag = selectTableInfo("scrapy", "company_table_info", key)
-    closeDB(db)
-
-    return data,flag
-
-#返回字符串逗号分隔，不包括",id,creater,create_time,updater,update_time"
-def getAllCols(dbName,tableName):
-    db = connectDB()
-
-    sql = "SELECT GROUP_CONCAT(COLUMN_NAME SEPARATOR ',') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" + dbName + "' AND TABLE_NAME = '" + tableName + "'"
-    data, flag = selectOneSql(sql, db)
-    partToDel = ",id,creater,create_time,updater,update_time"
-    requestCols = data[0].strip().replace(partToDel, "")
-
-    closeDB(db)
-    return requestCols
-
-def selectTableInfo(dbName,tableName,key):
-    db = connectDB()
-
-    requestCols=getAllCols(dbName,tableName)
-    column_list = requestCols.split(",")
-
-    sql = "select "+requestCols+" from "+tableName+" where Company_name = " + "'"+key+"'"
-    print(sql)
-    # 拼装sql语句
-    data, flag=selectAllSql(sql,db)
-
-    #转换为json
-    # column_list = []  # 定义字段名的列表
-    # for i in fields:
-    #     column_list.append(i[0])  # 提取字段名，追加到列表中
-    # print column_list　　　　　 # 举例：列表显示结果：['id', 'NAME', 'LOCAL', 'mobile', 'CreateTime']
-
-    jsonlist = list()
-    for row in data:  # 一次循环，row代表一行，row以元组的形式显示。
-        result = {} # 定义Python 字典
-        for i in range(len(column_list)):
-            result[column_list[i]] = str(row[i]) # 将row中的每个元素，追加到字典中。
-
-        jsondata = result  # Python的dict --转换成----> json的object
-        #print(jsondata)
-        jsonlist.append(jsondata)
-        #print(jsondata)
-    closeDB(db)
-    #return json.dumps(jsonlist, ensure_ascii=False),flag
-    return jsonlist,flag
-
-#填充字段：num,tableChineseName, tableEnglishName
-def refillCompanyTableInfo(dbName):
-    db = connectDB()
-
-    # 拼装sql语句
-    #获取所有公司名称
-    sql = "select company_name from companies "
-
-    companyNames,flag = selectAllSql(sql,db)
-
-    #获取所有table 名称
-    sql = "SELECT table_name FROM information_schema.tables WHERE table_schema = '"+dbName+"' AND table_type = 'base table' "
-
-    tableNames, flag= selectAllSql(sql, db)
-    print(tableNames)
-    print(companyNames)
-    companyNames=companyNames
-    count = 0
-    #遍历tableName和companyNames获取和填充对应内容
-    for i in companyNames:
-        for j in tableNames:
-            tableName = j[0]
-            companyName = i[0]
-            if count == 3:
-                print("xx")
-            if tableName != 'companies' and tableName != 'dictionary' and tableName != "company_table_info":
-                print("times: "+str(count))
-                count = count + 1
-                sql = "select count(*) from "+tableName+" where "+"'"+companyName+"'="+"Company_name"
-                print(sql)
-                data,flag=selectAllSql(sql,db)
-                num=data[0][0]
-
-                if num > 0:
-                    num = str(num)
-                    sql= "select chinese from dictionary where "+"'"+tableName+"'="+"english"
-                    data,flag=selectOneSql(sql,db)
-
-                    tableChineseName="'"+data[0]+"'"
-
-                    tableEnglish = "'"+tableName+"'"
-
-                    companyName = "'"+companyName+"'"
-
-                    sql = "insert into company_table_info (company_name,table_english_name,table_chinese_name,num_info) values ("+companyName+","+tableEnglish+","+tableChineseName+","+num+")"
-                    print(sql)
-                    try:
-                        affectRows=insertDB(db,sql)
-                        print(sql)
-                    except Exception as e:
-                        defaultWrite( "C:/Users/admin/Desktop/pachong_result/sql/",sql)
-                        pass
-            else:
-                print(tableName+"///////////////////")
-    closeDB(db)
-
-
-
-def updateSql(sql,db):
-    # 使用cursor()方法获取操作游标
-    cursor = db.cursor()
-
-    affectRows = cursor.execute(sql)
-
-    db.commit()
-    return affectRows
-
-def testx():
-    l = list()
-    d1 = {}
-    d1["a"] = "a"
-    d1["a2"] = "a"
-    d1["a3"] = "a"
-
-    d2 = {}
-    d2["a"] = "a"
-    d2["a2"] = "a"
-    d2["a3"] = "a"
-
-    d3 = {}
-    d3["a"] = "a"
-    d3["a2"] = "a"
-    d3["a3"] = "a"
-    l.append(d1)
-    l.append(d2)
-    l.append(d3)
-    return l
-#test
-# data,flag=selectTableInfo("scrapy","company_table_info","国网山东平度市供电公司1")
-# data,flag=checkCompany("国网山东平度市供电公司")
-# print(data)
-# print(flag)
-#test
 
 
 #refillCompanyTableInfo("scrapy")
@@ -1329,7 +556,7 @@ def testx():
 # changVerifiedCode()
 
 #@server.route('/preBegin',methods=['post'])#只有在函数前加上@server.route (),这个函数才是个接口，不是一般的函数
-def requestInfoHttpResponseJson(browser,wait,key,chromeDir,acount,password,loginDir):
+def requestInfoHttpResponseJson(key,chromeDir,acount,password,loginDir):
     toReturn = dict()
     if key=="" or key == None:
         res = {'msg': '必填字段未填，请查看接口文档', 'msg_code': 1001}  # 1001表示必填接口未填
@@ -1341,13 +568,15 @@ def requestInfoHttpResponseJson(browser,wait,key,chromeDir,acount,password,login
                 res = {'msg': '信息', 'msg_code': 1000,'data':data}  # 1000表示成功
             else:
                 print("-----开始登录-----")
-                verifiedCode, browser, wait, imgObj = requestLogin(browser, wait, key, chromeDir, acount, password,
-                                                                   loginDir)
+                verifiedCode, browser, wait, imgObj = requestLogin( chromeDir, acount, password,loginDir)
                 print("-----结束登录-----")
-                res = {'msg': '验证码', 'msg_code': 1001, 'data': verifiedCode}  # 1001表示成功,返回验证码
+                myid=uuid.uuid1().hex
+                res = {'msg': '验证码', 'msg_code': 1001, 'data': verifiedCode, 'myid':myid}  # 1001表示成功,返回验证码
                 toReturn["browser"] = browser
                 toReturn["wait"] = wait
                 toReturn["imgObj"] = imgObj
+                toReturn["myid"]=myid
+                toReturn["companyCode"]=key
         except netError as e:
             res = {'msg': '网络不稳定', 'msg_code': 1002}  # 1002表示网络错误
             browser.close()
@@ -1355,7 +584,7 @@ def requestInfoHttpResponseJson(browser,wait,key,chromeDir,acount,password,login
     return HttpResponse(json.dumps(res,ensure_ascii=False)),toReturn
 
 
-def requestInfo(browser,wait,key,chromeDir,acount,password,loginDir):
+def requestInfoScrapy(key,chromeDir,acount,password,loginDir):
     toReturn = dict()
     if key=="" or key == None:
         res = {'msg': '必填字段未填，请查看接口文档', 'msg_code': 1003}  # 1003表示必填接口未填
@@ -1367,7 +596,7 @@ def requestInfo(browser,wait,key,chromeDir,acount,password,loginDir):
                 res = {'msg': '信息', 'msg_code': 1000,'data':data}  # 1000表示成功，返回信息
             else:
                 print("-----开始登录-----")
-                verifiedCode,browser,wait,imgObj = requestLogin(browser,wait,key,chromeDir,acount,password,loginDir)
+                verifiedCode,browser,wait,imgObj = requestLogin(chromeDir,acount,password,loginDir)
                 print("-----结束登录-----")
                 res = {'msg': '验证码', 'msg_code': 1001,'data':verifiedCode}  # 1001表示成功,返回验证码
                 toReturn["browser"]=browser
@@ -1378,6 +607,67 @@ def requestInfo(browser,wait,key,chromeDir,acount,password,loginDir):
             browser.close()
     print(res)
     return res,toReturn
+
+
+# 从搜索结果中选择公司，返回相关链接
+# def select(wait, browser, companyCode):
+#     # resultNum 判断搜索结果数量
+#     resultNum = '0'
+#
+#     # 等待结果数量显示
+#     # pageResource(browser,wait)
+#     # wait.until(EC.presence_of_element_located((By.ID, "//*[@id='countOld']")))
+#     # 获取结果数量
+#     num = browser.find_element_by_xpath("//*[@id='countOld']/span").text
+#     if num == '0':  # 判断是否有结果
+#         print("no result: " + "[result number: " + num + "]")
+#
+#         return browser, wait, resultNum
+#
+#     resultName = browser.find_element_by_xpath("//*[@id='search-result']/tr[1]/td[3]/a").text
+#     if resultName != companyCode:  # 判断字段是否绝对一样
+#         print("[companyCode: " + companyCode + "]"
+#               + "result company name: " + resultName)
+#         return browser, wait, resultNum
+#
+#     else:
+#         # 确认找到结果
+#         resultNum = num
+#
+#         # 等待列表信息展示结束
+#         wait.until(EC.presence_of_element_located((By.ID, "search-result")))
+#
+#         # 打印页面内容
+#         # pageResource(browser)
+#
+#         # 获取列表信息
+#         resultList = browser.find_element_by_xpath("//tbody[@id='search-result']")
+#
+#         # 获取每条信息明细
+#         trs = resultList.find_elements_by_xpath(".//tr")
+#
+#         # 默认第一条
+#         firstTd = trs[0].find_elements_by_xpath(".//td")
+#         # print(firstTd)
+#         a = firstTd[2].find_elements_by_xpath("./a")[0].get_attribute("href")
+#         # 输出所有href
+#         # count=0
+#         # for tr in trs:
+#         #     print(count)
+#         #     #获取链接位置
+#         #     tds = tr.find_elements_by_xpath(".//td")
+#         #     a=tds[2].find_elements_by_xpath("./a")[0]
+#         #     print(sectionResource(a))
+#         #     #print(sectionResource(tds[2]))
+#         #     count=count+1
+#         # 点击进入公司明细页面
+#         browser.get(a)
+#         wait.until(EC.presence_of_all_elements_located)
+#         # pageResource(browser)
+#
+#         return browser, wait, resultNum
+
+
 # @server.route('/checkCode',methods=['post'])#只有在函数前加上@server.route (),这个函数才是个接口，不是一般的函数
 # def checkCode():
 #     global browser
