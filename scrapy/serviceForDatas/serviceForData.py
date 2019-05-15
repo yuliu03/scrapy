@@ -1,8 +1,9 @@
 #返回字符串逗号分隔，不包括",id,creater,create_time,updater,update_time"
+from scrapy.myException.myException import sqlError
 from scrapy.sql.sql import connectDB, selectOneSql, closeDB, selectAllSql, insertDB
 from scrapy.util.util import defaultWrite
 
-
+#获取表所有的列名，不包括id,creater,create_time,updater,update_time
 def getAllCols(dbName,tableName):
     db = connectDB()
 
@@ -14,6 +15,8 @@ def getAllCols(dbName,tableName):
     closeDB(db)
     return requestCols
 
+
+#根据表名和搜索公司名称查出所有想改信息
 def selectTableInfo(dbName,tableName,key):
     db = connectDB()
 
@@ -101,7 +104,7 @@ def refillCompanyTableInfo(dbName):
                 print(tableName+"///////////////////")
     closeDB(db)
 
-
+#判断是否存在公信名称
 def checkCompany(key):
     db=connectDB()
 
@@ -127,3 +130,142 @@ def getDictionary(db):
         dictionary[result[1]] = result[0]
         print(result, cursor.rownumber)
         result = cursor.fetchone()
+
+# 增加一行数据，tableType1
+def addRow1(row_values):
+    pos = 0
+    toReturn = ""
+    while pos < len(row_values):
+        toReturn = toReturn + row_values[pos] + ","
+        pos = pos + 1
+
+    # 删除最后一个逗号
+    toReturn = toReturn[:-1]
+    return toReturn,pos
+
+# 增加一行数据，tableType2
+def addRow2(values, tableName, companyCode):
+    # 为每一行
+    for row_values in values:
+        row_values.append(tableName)
+        row_values.append(companyCode)
+
+        pos = 0
+        toReturn = ""
+        while pos < len(row_values):
+            for value in row_values[pos]:
+                toReturn = toReturn +"'" +row_values[pos] +"'"+ ","
+                pos = pos + 1
+            # 删除最后一个逗号
+            toReturn = toReturn[:-1]
+            toReturn = "("+toReturn+"),"
+
+        # 删除最后一个逗号
+        toReturn = toReturn[:-1]
+
+        return toReturn,pos
+
+def insertInfo(items, companyCode,dic):
+    # 解析字段和内容
+    tableNames = list()
+    tableKeysValues = list()  # list<tableType,keys,values,tableName>
+    print("////////////////")
+    # 循环所有的模块
+    for item in items:
+        # 循环所有的table
+        for x in item[1]:
+            # 初始化
+            keys = list()
+            values = list()
+
+            # 获取table名称，也是sheet 的名称
+            if x[0].__str__() == "行政处罚 [工商局]":
+                tableName = "行政处罚"
+            else:
+                tableName = x[0].__str__()
+
+            tableNames.append(tableName)
+
+            # print("tableName: " +tableName)
+            info = x[1]
+            tableType = info[0]
+            table = info[1]
+
+            # 判断，数字1为上下类型table
+            if tableType == 1:
+                keys = table[0]
+                values = list()
+
+                # 获取所有table对应的内容
+                pos = 1
+                while pos < len(table):
+                    values.append(table[pos])
+                    pos = 1 + pos
+
+                # 写死加入公司名称和模块名称，需要保持key和value的位置一致
+                keys.append("module_name")
+                keys.append("company_name")
+
+                tableKeysValues.append((tableType, keys, values, tableName))
+
+            # 判断，数字1为左右类型table
+            elif tableType == 0:
+                print("table: " + table.__str__())
+                for i in table:
+                    keys.append(i[0])
+                    values.append(i[1])
+
+                # 写死加入公司名称和模块名称，需要保持key和value的位置一致
+                keys.append("module_name")
+                keys.append("company_name")
+
+                tableKeysValues.append((tableType, keys, values, tableName))
+
+        print("----------")
+        # print("table name: "+item[1][0].__str__())
+        # print("----------")
+        # print("table type: " + item[1][1][0].__str__())
+        # print("----------")
+        # print("table info: " + item[1][1][1].__str__())
+
+    print(tableKeysValues)
+    print("////////////////")
+
+    # 遍历所有的模块
+    for i in tableKeysValues:
+        tableType = i[0]
+        keys = i[1]
+        values = i[2]
+
+
+        #拼装sqlkeys
+        #初始化参数
+        sqlkeys = ""
+        sqlValues = ""
+        countKeys = 0
+        countValues = 0
+
+        for key in keys:
+            # 打开excel
+            sqlkeys = dic[key] + ","
+            countKeys = countKeys + 1
+
+        #去除最后一个逗号
+        sqlkeys = sqlkeys[:-1]
+        sqlkeys ="("+sqlkeys+")"
+
+        # 判断，数字1为上下类型table
+        if tableType == 0:
+            values.append(tableName)
+            values.append(companyCode)
+            sqlValues,countValues=addRow1(values)
+        # 判断，数字1为左右类型table
+        elif tableType == 1:
+            sqlValues,countValues=addRow2(values,tableName,companyCode)
+
+        if countValues != countKeys:
+            raise sqlError("拼装sql出错")
+
+        else:
+            finalSql = "insert into" + dic[tableName]+sqlkeys+" values "+values
+            print(finalSql)

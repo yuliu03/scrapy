@@ -21,6 +21,7 @@ def insertDB(db,sql):
 
     db.commit()
 
+#获取单条信息fetchone
 def selectOneSql(sql,db):
     # 使用cursor()方法获取操作游标
     cursor = db.cursor()
@@ -32,6 +33,7 @@ def selectOneSql(sql,db):
 
     return data,affectRows
 
+#获取多条信息fetchall
 def selectAllSql(sql,db):
     # 使用cursor()方法获取操作游标
     cursor = db.cursor()

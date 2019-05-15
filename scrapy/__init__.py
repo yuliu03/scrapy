@@ -22,39 +22,7 @@ from scrapy.util.util import *
 from scrapy.loginUtil.login import *
 
 
-# 增加一行数据，tableType1
-def addRow1(row_values):
-    pos = 0
-    toReturn = ""
-    while pos < len(row_values):
-        toReturn = toReturn + row_values[pos] + ","
-        pos = pos + 1
 
-    # 删除最后一个逗号
-    toReturn = toReturn[:-1]
-    return toReturn,pos
-
-# 增加一行数据，tableType2
-def addRow2(values, tableName, companyCode):
-    # 为每一行
-    for row_values in values:
-        row_values.append(tableName)
-        row_values.append(companyCode)
-
-        pos = 0
-        toReturn = ""
-        while pos < len(row_values):
-            for value in row_values[pos]:
-                toReturn = toReturn +"'" +row_values[pos] +"'"+ ","
-                pos = pos + 1
-            # 删除最后一个逗号
-            toReturn = toReturn[:-1]
-            toReturn = "("+toReturn+"),"
-
-        # 删除最后一个逗号
-        toReturn = toReturn[:-1]
-
-        return toReturn,pos
 
 #更换验证码
 def changVerifiedCode(infoDic):
@@ -250,7 +218,6 @@ def selectForOne(companyCode, browser, wait):
         #resultNum 为查询结果数量，因为是模糊查询，所以会出现多个结果
         return resultNum, browser, wait
 
-
 # 方法一：获取所有菜单链接
 def getNav(browser, wait, rootUrl):
     # 提取页面源代码
@@ -375,110 +342,6 @@ def contentPage(soup, option):
     #     print("知识产权")
     #     #IntellectualPro(soup)
 
-def insertInfo(items, companyCode,dic):
-    # 解析字段和内容
-    tableNames = list()
-    tableKeysValues = list()  # list<tableType,keys,values,tableName>
-    print("////////////////")
-    # 循环所有的模块
-    for item in items:
-        # 循环所有的table
-        for x in item[1]:
-            # 初始化
-            keys = list()
-            values = list()
-
-            # 获取table名称，也是sheet 的名称
-            if x[0].__str__() == "行政处罚 [工商局]":
-                tableName = "行政处罚"
-            else:
-                tableName = x[0].__str__()
-
-            tableNames.append(tableName)
-
-            # print("tableName: " +tableName)
-            info = x[1]
-            tableType = info[0]
-            table = info[1]
-
-            # 判断，数字1为上下类型table
-            if tableType == 1:
-                keys = table[0]
-                values = list()
-
-                # 获取所有table对应的内容
-                pos = 1
-                while pos < len(table):
-                    values.append(table[pos])
-                    pos = 1 + pos
-
-                # 写死加入公司名称和模块名称，需要保持key和value的位置一致
-                keys.append("module_name")
-                keys.append("company_name")
-
-                tableKeysValues.append((tableType, keys, values, tableName))
-
-            # 判断，数字1为左右类型table
-            elif tableType == 0:
-                print("table: " + table.__str__())
-                for i in table:
-                    keys.append(i[0])
-                    values.append(i[1])
-
-                # 写死加入公司名称和模块名称，需要保持key和value的位置一致
-                keys.append("module_name")
-                keys.append("company_name")
-
-                tableKeysValues.append((tableType, keys, values, tableName))
-
-        print("----------")
-        # print("table name: "+item[1][0].__str__())
-        # print("----------")
-        # print("table type: " + item[1][1][0].__str__())
-        # print("----------")
-        # print("table info: " + item[1][1][1].__str__())
-
-    print(tableKeysValues)
-    print("////////////////")
-
-    # 遍历所有的模块
-    for i in tableKeysValues:
-        tableType = i[0]
-        keys = i[1]
-        values = i[2]
-
-
-        #拼装sqlkeys
-        #初始化参数
-        sqlkeys = ""
-        sqlValues = ""
-        countKeys = 0
-        countValues = 0
-
-        for key in keys:
-            # 打开excel
-            sqlkeys = dic[key] + ","
-            countKeys = countKeys + 1
-
-        #去除最后一个逗号
-        sqlkeys = sqlkeys[:-1]
-        sqlkeys ="("+sqlkeys+")"
-
-        # 判断，数字1为上下类型table
-        if tableType == 0:
-            values.append(tableName)
-            values.append(companyCode)
-            sqlValues,countValues=addRow1(values)
-        # 判断，数字1为左右类型table
-        elif tableType == 1:
-            sqlValues,countValues=addRow2(values,tableName,companyCode)
-
-        if countValues != countKeys:
-            raise sqlError("拼装sql出错")
-
-        else:
-            finalSql = "insert into" + dic[tableName]+sqlkeys+" values "+values
-            print(finalSql)
 
 def doScrapyForOneKey(key,browser,wait):
         # 第一个公司，名称
