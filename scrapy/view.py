@@ -11,20 +11,24 @@ password = "87096927"
 
 sessionInfo={}
 
+
+#删除seesion 内容
 def delDict(key):
     if key in sessionInfo.keys():
         del sessionInfo[key]
 
+#判断seession是否存在
 def checkSessionInfo(key):
     if key in sessionInfo.keys():
         return sessionInfo[key]
     else:
         return -1
 
-
+#test
 def hello(request):
     return HttpResponse("Hello world")
 
+#获取x公司内容
 def requestInfo(request):
     browser = ""
     wait = ""
@@ -61,6 +65,7 @@ def renderHtml(request):
     context['img'] = data['data']
     return render(request, 'index.html', context)
 
+#更换验证码
 def changeCode(request):
     data = json.loads(request.body.decode("utf8"))
     print(request.body)
@@ -80,6 +85,7 @@ def changeCode(request):
     return response
 
 
+#开始从网上获取
 def doScrapy(request):
     data = json.loads(request.body.decode("utf8"))
     print(request.body)
@@ -96,5 +102,10 @@ def doScrapy(request):
         print("未生成session id")
 
     else:
-        doScrapyForOneKey(sessionInfo[myid]["companyCode"],sessionInfo[myid]["browser"],sessionInfo[myid]["wait"])
-
+        info,flag=doScrapyForOneKey(sessionInfo[myid]["companyCode"],sessionInfo[myid]["browser"],sessionInfo[myid]["wait"])
+        if flag == 0:
+            print("未找到公司："+sessionInfo[myid]["companyCode"])
+        elif flag == -1:
+            print("公司名称有误，请核实")
+        else:
+            print("内容获取成功")

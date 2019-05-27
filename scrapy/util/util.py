@@ -1,5 +1,5 @@
 #写入默认内容，用于未查到信息结果
-from telnetlib import EC
+from selenium.webdriver.support import expected_conditions as EC
 
 
 def defaultWrite(outputDir,info):

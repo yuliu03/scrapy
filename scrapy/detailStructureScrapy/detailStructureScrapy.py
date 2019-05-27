@@ -5,7 +5,7 @@ import re
 # 过滤无用信息
 import sys
 
-from scrapy.util.util import myCopy
+from scrapy.__init__ import dictionary, wordsToAdd
 
 
 def tableInfo2Filter(l):
@@ -54,7 +54,8 @@ def ipoInfo(soup):
 
             # 将内容插入上市信息页面内容储存空间
             if dic != None:
-                ipoInfo.append((sec.div.h3.text.strip(), dic))
+                tableNameEnglish ="insert into "+ dictionary[sec.div.h3.text.strip()]
+                ipoInfo.append(tableNameEnglish +" "+ dic)
         except AttributeError:
             pass
     return ipoInfo
@@ -88,11 +89,13 @@ def runState(soup):
 
             # 将内容插入经营状况页面内容储存空间
             if dic != None:
-                runStateInfo.append((sec.div.h3.text.strip(), dic))
+                tableNameEnglish ="insert into "+ dictionary[sec.div.h3.text.strip()]
+                runStateInfo.append(tableNameEnglish +" "+ dic)
         except AttributeError:
             pass
 
     return runStateInfo
+
 
 # 获取经营风险页面内容
 def runRisk(soup):
@@ -113,7 +116,17 @@ def runRisk(soup):
 
             # 将经营风险信息插入信息储存表
             if dic != None:
-                runRiskInfo.append((sec.div.h3.text.strip(), dic))
+                tableName=sec.div.h3.text.strip()
+                if tableName == "行政处罚 [工商局]":
+                    tableName = "行政处罚"
+
+                try:
+                    tableNameEnglish ="insert into "+ dictionary[tableName]
+                except:
+                    wordsToAdd.append(tableName)
+                    pass
+
+                runRiskInfo.append(tableNameEnglish +" "+ dic)
 
         except AttributeError:
             pass
@@ -162,7 +175,8 @@ def companyDev(soup):
 
             # 将企业发展信息插入信息储存表
             if dic != None:
-                companyDevInfo.append((x.text.strip(), dic))
+                tableNameEnglish ="insert into "+ dictionary[x.text.strip()]
+                companyDevInfo.append(tableNameEnglish +" "+ dic)
 
         return companyDevInfo
 
@@ -195,7 +209,8 @@ def historyInfo(soup):
 
             # 将企业历史信息插入信息储存表
             if dic != None:
-                historyInfo.append((sec.div.h3.text.strip(), dic))
+                tableNameEnglish ="insert into "+ dictionary[sec.div.h3.text.strip()]
+                historyInfo.append(tableNameEnglish +" "+ dic)
 
         except AttributeError:
             pass
@@ -219,7 +234,8 @@ def legalAction(soup):
 
             # 将信息插入法律诉讼信息储存表
             if dic != None:
-                legalInfo.append((sec.div.h3.text.strip(), dic))
+                tableNameEnglish ="insert into "+ dictionary[sec.div.h3.text.strip()]
+                legalInfo.append(tableNameEnglish +" "+ dic)
 
         except AttributeError:
             pass
@@ -284,7 +300,9 @@ def basicInfo(soup):
             # print(dic)
             # 将信息插入基础信息表
             if dic != None:
-                businessInfo.append((sec.div.h3.text.strip(), dic))
+                tableNameEnglish="insert into "+dictionary[sec.div.h3.text.strip()]
+                businessInfo.append(tableNameEnglish +" "+ dic)
+
         except AttributeError:
             pass
 
@@ -299,7 +317,8 @@ def tableInfo2(trs):
     ths = trs[0].find_all('th')
 
     # 获取字段名称,过滤空格等问题
-    names = list()  # 初始化抬头列表
+    #names = list()  # 初始化抬头列表 old
+    keysSql=""
     for name in ths:
         # 方法一：拼接字符串
         # names+='('+name.text.strip().replace("\n", "").replace("\t", "")+')'
@@ -307,10 +326,22 @@ def tableInfo2(trs):
         # 方法二：list直接添加
         title = tableInfo2Filter(name.text.strip().replace("\n", "").replace("\t", ""))
 
-        names.append(title)
+        try:
+            if title == '出质股权数额（万元）':
+                title = '出质股权数额'
+            titleEnglish = dictionary[title]
+        except:
+            wordsToAdd.append(title)
+            pass
+
+        #names.append(titleEnglish) old
+        keysSql = keysSql + titleEnglish + ","
 
     # 过滤空格等冗余信息,将字段名称加入数据储存列表
-    inf.append(names)
+    #inf.append(names) old
+    keysSql ="("+keysSql[:-1]+")"
+
+
 
     # 获取字段数量
     nameSize = len(ths)
@@ -361,18 +392,21 @@ def tableInfo2(trs):
     ##############################################
     del (trs[0])
     for tr in trs:
-        value = list()  # 初始化内容列表
+        #value = list()  # 初始化内容列表 old
+        valuesSql = ""
         tds = tr.find_all('td', recursive=False)
 
         # 判断是否有内容
         if len(tds) > 0:
             # 初始化内容类数量
             valueSize = 0
+            value = ""
             # 获取每一行信息
             for td in tds:
                 tmp = ''
                 try:
-                    if td.find('h3').text.strip().replace("\n", "").replace("\t", "") != "":
+                    test = td.find('h3').text.strip().replace("\n", "").replace("\t", "")
+                    if td.find('h3').text.strip().replace("\n", "").replace("\t", "") == "":
                         tmp += '-'
                     else:
                         tmp += td.find('h3').text.strip().replace("\n", "").replace("\t", "")
@@ -382,10 +416,13 @@ def tableInfo2(trs):
                 if (tmp != ''):
                     # 字段内容类数量加一
                     valueSize += 1
-                    value.append(tableInfo2Filter(tmp))
+                    #value.append(tableInfo2Filter(tmp)) old
+                    value = value +"'"+tableInfo2Filter(tmp)+"',"
 
             # 过滤空格等冗余信息,将字段内容加入数据储存列表
-            inf.append(value)
+            #inf.append(value) old
+            value = value[:-1]
+            valuesSql = valuesSql+"("+value+"),"
 
             # 每获取一行信息，验证字段内容数量是否和字段名称数量一致
             if (nameSize != valueSize):
@@ -394,68 +431,52 @@ def tableInfo2(trs):
                 print(tds)
                 print("/////")
                 print(inf)
-                myCopy(companyCode.__str__() + "\n" + tds.__str__() + "\n" + inf.__str__())
+                #myCopy(companyCode.__str__() + "\n" + tds.__str__() + "\n" + inf.__str__())
                 print("字段内容数量是否和字段名称数量不一致")
                 pass
     ###############################################
 
     # 数字1代表表格是上下类型
-    return (1, inf)
+    #return (1, inf) old
+    valuesSql =valuesSql[:-1]
+    return keysSql + " values "+ valuesSql
 
-# 最基础信息
-def topInf(soup):
-    # 获取公司名
-    try:
-        conpanyname = soup.find('div', {'class': 'row title jk-tip'}).h1.text.strip()
-    except AttributeError:
-        sys.exit('获取不了目标页面内容,爬虫自动退出,请检查目标页面是否正常打开或者自动跳转到首页')
-    # 获取电话、邮箱、官网、公司地址信息
-    row = soup.find('div', {'class': 'dcontent'}).find_all('div', {'class': 'row'})
-    for i in row:
-        # 判断是否i.find('span',{'class':'cdes'})有内容
-        if i.find('span', {'class': 'cdes'}):
-            # 判断获取的i.find('span',{'class':'cdes'})是否为电话
-            if i.find('span', {'class': 'cdes'}).text.strip() == '电话：':
-                try:
-                    tel = i.find('span', {'class': 'cvlu'}).span.text.strip()
-                except AttributeError:
-                    tel = i.find('span', {'class': 'cvlu'}).text.strip()
-                # 获取官网
-                if i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().text.strip() == '官网：':
-                    try:
-                        web = i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().find_next(
-                            'span').a.find_next('a').text.strip()
-                    except AttributeError:
-                        web = i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().find_next(
-                            'span').text.strip()
-            # 判断获取的i.find('span',{'class':'cdes'})是否为邮箱
-            if i.find('span', {'class': 'cdes'}).text.strip() == '邮箱：':
-                try:
-                    email = i.find('span', {'class': 'cvlu'}).text.strip()
-                except AttributeError:
-                    email = '暂无'
-                # 获取地址
-                if i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().text.strip() == '地址：':
-                    try:
-                        address = i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().find_next(
-                            'span').a.text.strip()
-                    except AttributeError:
-                        address = i.find('span', {'class': 'cdes'}).find_parent().find_next_sibling().find_next(
-                            'span').text.strip()
 
 # 用于左右形式的table
 def tableInfo(tds):
     flag = 'key'
     inf = list()
+    keysSql=""
+    valuesSql=""
+
     for td in tds:
         if (flag == 'key'):
             key = td.text.strip().replace("\n", "").replace("\t", "")
             flag = 'value'
+
         else:
             value = td.text.strip().replace("\n", "").replace("\t", "")
             flag = 'key'
-            # add新键值对
-            inf.append((key, tableInfo2Filter(value)))
 
-    # 数字0代表左右表格
-    return (0, inf)
+            valuesSql=valuesSql+"'"+value+"',"
+
+
+            try:
+                englishKey=dictionary[key]
+                keysSql = keysSql + englishKey + ","
+            except:
+                wordsToAdd.append(key)
+                pass
+
+            # add新键值对 old
+            #inf.append([englishKey, tableInfo2Filter(value)])
+
+    print("----------------------------")
+    keysSql="("+keysSql[:-1]+")"
+    valuesSql="("+valuesSql[:-1]+")"
+    print(keysSql)
+    print(valuesSql)
+
+    # 数字0代表左右表格 old
+    #return (0, inf)
+    return keysSql + " values" +valuesSql

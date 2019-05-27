@@ -16,10 +16,9 @@ def insertDB(db,sql):
 
     affectRows = cursor.execute(sql)
 
-    if(affectRows<=0):
-        raise Exception("affectRows<=0")
-
     db.commit()
+
+    return affectRows
 
 #获取单条信息fetchone
 def selectOneSql(sql,db):

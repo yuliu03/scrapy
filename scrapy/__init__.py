@@ -335,7 +335,17 @@ def contentPage(soup, option):
         print("上市信息")
         moduleInf = ipoInfo(soup)
 
-    return (option, moduleInf)
+    moduleInfEnglish = ""
+    try:
+        moduleInfEnglish = dictionary[option]
+    except:
+        wordsToAdd.append(option)
+        pass
+
+    #判断如果无法翻译，插入中文名称
+    if moduleInfEnglish == "":
+        moduleInfEnglish=option
+    return [moduleInfEnglish, moduleInf]
     # 目前知识产权一栏不处理
     # elif option=="知识产权":
     #     #获取知识产权信息
@@ -343,11 +353,7 @@ def contentPage(soup, option):
     #     #IntellectualPro(soup)
 
 
-def doScrapyForOneKey(key,browser,wait):
-        # 第一个公司，名称
-        companyCode = key
-
-        ###############################
+def doScrapyForOneKey(companyCode,browser,wait):
         # 进入主页面
         ###############################
         # 搜索公司信息
@@ -366,10 +372,10 @@ def doScrapyForOneKey(key,browser,wait):
         ###############################
 
         if resultNum == '0':
-            return '0'
+            return None,'0'
 
         if resultNum == '-1':
-            return '-1'
+            return None,'-1'
 
 
         print("-----开始对公司信息目录进行操作-----")
@@ -379,17 +385,13 @@ def doScrapyForOneKey(key,browser,wait):
         #writeResult(output, items, companyCode)
 
         #获取sql语句拼装信息
-        db = connectDB()
-
-        #获取字典内容
-        dictionary=getDictionary(db)
 
         #插入内容至db
-        insertInfo(items,companyCode,dictionary)
+        insertInfo(items,companyCode)
 
-        db = closeDB(db)
+
         #返回内容
-        return items
+        return items,1
     #return doScrapyForOneKey(key,browser, wait)
 
 ########################################################
@@ -471,7 +473,16 @@ def requestInfoScrapy(key,chromeDir,acount,password,loginDir):
     print(res)
     return res,toReturn
 
+#初始化全局变量
+wordsToAdd=[]
+db = pymysql.connect("localhost", "root", "root", "scrapy", charset='utf8')
+dictionary = getDictionary(db)
+db.close()
 
+#test
+requestLogin("C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe","13958127726","87096927","https://www.qichacha.com/user_login")
+
+# 获取sql语句拼装信息
 # 从搜索结果中选择公司，返回相关链接
 # def select(wait, browser, companyCode):
 #     # resultNum 判断搜索结果数量
