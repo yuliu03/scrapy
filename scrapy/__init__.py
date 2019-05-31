@@ -448,7 +448,6 @@ def requestInfoHttpResponseJson(key,chromeDir,acount,password,loginDir):
 
     return HttpResponse(json.dumps(res,ensure_ascii=False)),toReturn
 
-
 def requestInfoScrapy(key,chromeDir,acount,password,loginDir):
     toReturn = dict()
     if key=="" or key == None:
@@ -473,6 +472,18 @@ def requestInfoScrapy(key,chromeDir,acount,password,loginDir):
     print(res)
     return res,toReturn
 
+def getDetailInfo(companyName,tableName):
+    db = connectDB()
+
+    data, flag = selectTableInfo("scrapy", tableName, companyName)
+    if flag >0:
+        res = {'msg': '验证码', 'msg_code': 1001, 'data': data}  # 1001表示成功,返回内容
+    else:
+        res = {'msg': '验证码', 'msg_code': 1001, 'data': None}  # 1001表示成功,但是没有内容
+
+    closeDB(db)
+    return HttpResponse(json.dumps(res,ensure_ascii=False))
+
 #初始化全局变量
 wordsToAdd=[]
 db = pymysql.connect("localhost", "root", "root", "scrapy", charset='utf8')
@@ -480,7 +491,8 @@ dictionary = getDictionary(db)
 db.close()
 
 #test
-requestLogin("C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe","13958127726","87096927","https://www.qichacha.com/user_login")
+#getDetailInfo("英大泰和财产保险股份有限公司商丘中心支公司","opening_notice")
+#requestLogin("C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe","13958127726","87096927","https://www.qichacha.com/user_login")
 
 # 获取sql语句拼装信息
 # 从搜索结果中选择公司，返回相关链接

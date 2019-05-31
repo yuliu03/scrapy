@@ -110,11 +110,12 @@ def checkCompany(key):
     newkey = "'"+key+"'"
     sql="select company_name from companies where company_name = "+newkey
     data,flag=selectOneSql(sql,db)
-    if flag == 1:
+    if flag >= 1:
         data, flag = selectTableInfo("scrapy", "company_table_info", key)
     closeDB(db)
 
     return data,flag
+
 
 #获取字典内容
 def getDictionary(db):

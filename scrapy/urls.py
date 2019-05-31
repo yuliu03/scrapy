@@ -21,7 +21,8 @@ from django.conf.urls import url
 admin.autodiscover()
 urlpatterns = [
     url(r'^hello/$', hello),
-    url(r'^requestInfo/',requestInfo, name='requestInfo'),
+    url(r'^requestMenuInfo/',requestMenuInfo, name='requestMenuInfo'),
     url(r'^renderHtml/',renderHtml, name='renderHtml'),
-    url(r'^changeCode/', changeCode, name='changeCode')
+    url(r'^changeCode/', changeCode, name='changeCode'),
+    url(r'^getInfoByCompanyName/', getInfoByCompanyName, name='getInfoByCompanyName')
 ]

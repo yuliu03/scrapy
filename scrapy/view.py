@@ -24,12 +24,8 @@ def checkSessionInfo(key):
     else:
         return -1
 
-#test
-def hello(request):
-    return HttpResponse("Hello world")
-
-#获取x公司内容
-def requestInfo(request):
+#获取x公司菜单内容
+def requestMenuInfo(request):
     browser = ""
     wait = ""
     data=json.loads(request.body.decode("utf8"))
@@ -38,7 +34,10 @@ def requestInfo(request):
 
     #infoDic: browser,wait,imgObj
     response,infoDic=requestInfoHttpResponseJson(key,chromeDir,acount,password,loginDir)
-    sessionInfo[infoDic["myid"]] = infoDic
+    if not infoDic=={}:
+        sessionInfo[infoDic["myid"]] = infoDic
+        print("info has found in local db")
+
     print(response)
 
     response["Access-Control-Allow-Origin"] = "*"
@@ -49,21 +48,25 @@ def requestInfo(request):
 
     return response
 
-def renderHtml(request):
-    browser=""
-    wait=""
+#获取公司内容根据表名称
+def getInfoByCompanyName(request):
     data = json.loads(request.body.decode("utf8"))
-    print(data)
-    key = data.get("key")
-    print(key)
-    data,infoDic=requestInfoScrapy(key,chromeDir,acount,password,loginDir)
-    if data['msg_code']==1001:
-        print(data['data'])
-    context = {}
-    #context['hello'] = 'hidden'
-    context['hello'] = 'form-group col-md-6'
-    context['img'] = data['data']
-    return render(request, 'index.html', context)
+    companyName = data.get("companyName")
+    tableName = data.get("tableName")
+    if companyName ==None or tableName == None:
+        print("companyName ==None or tableName == None")
+        res = {'msg': '失败', 'msg_code': 1000, 'data': None}  # 1001表示失败,但是没有内容
+        response=HttpResponse(json.dumps(res, ensure_ascii=False))
+    else:
+        response = getDetailInfo(companyName,tableName)
+    print(response)
+
+    response["Access-Control-Allow-Origin"] = "*"
+    response["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+    response["Access-Control-Max-Age"] = "1000"
+    response["Access-Control-Allow-Headers"] = "*"  # 加入这行
+
+    return response
 
 #更换验证码
 def changeCode(request):
@@ -84,8 +87,7 @@ def changeCode(request):
 
     return response
 
-
-#开始从网上获取
+#接受验证码，判断并且开始从网上获取
 def doScrapy(request):
     data = json.loads(request.body.decode("utf8"))
     print(request.body)
@@ -109,3 +111,30 @@ def doScrapy(request):
             print("公司名称有误，请核实")
         else:
             print("内容获取成功")
+
+
+
+
+
+
+
+#########test function###########
+#test
+def renderHtml(request):
+    browser=""
+    wait=""
+    data = json.loads(request.body.decode("utf8"))
+    print(data)
+    key = data.get("key")
+    print(key)
+    data,infoDic=requestInfoScrapy(key,chromeDir,acount,password,loginDir)
+    if data['msg_code']==1001:
+        print(data['data'])
+    context = {}
+    #context['hello'] = 'hidden'
+    context['hello'] = 'form-group col-md-6'
+    context['img'] = data['data']
+    return render(request, 'index.html', context)
+#test
+def hello(request):
+    return HttpResponse("Hello world")
