@@ -143,3 +143,6 @@ CORS_ALLOW_HEADERS = (
 
 STATIC_URL = '/static/'
 
+
+
+

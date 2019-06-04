@@ -1,6 +1,28 @@
 #返回字符串逗号分隔，不包括",id,creater,create_time,updater,update_time"
-from scrapy.sql.sql import connectDB, selectOneSql, closeDB, selectAllSql, insertDB
+from scrapy.sql.sql import *
 from scrapy.util.util import defaultWrite
+
+
+
+def getEnglishToChineseDictionary(db):
+    # 使用cursor()方法获取操作游标
+    cursor = db.cursor()
+    affectRows = cursor.execute("select english,chinese from dictionary")
+    print(affectRows)
+    result = cursor.fetchone()
+    EnglishToChineseDictionary = dict()
+    while result != None:
+        EnglishToChineseDictionary[result[0]] = result[1]
+        print(result, cursor.rownumber)
+        result = cursor.fetchone()
+    return EnglishToChineseDictionary
+
+# from TestDemo.spiders.tmp.static import wordsToAdd, dictionary
+wordsToAdd=[]
+# 获取sql语句拼装信息
+db = pymysql.connect("localhost", "root", "root", "scrapy", charset='utf8')
+englishToChineseDictionary = getEnglishToChineseDictionary(db)
+db.close()
 
 #获取表所有的列名，不包括id,creater,create_time,updater,update_time
 def getAllCols(dbName,tableName):
@@ -34,14 +56,28 @@ def selectTableInfo(dbName,tableName,key):
 
     jsonlist = list()
     for row in data:  # 一次循环，row代表一行，row以元组的形式显示。
-        result = {} # 定义Python 字典
-        for i in range(len(column_list)):
-            result[column_list[i]] = str(row[i]) # 将row中的每个元素，追加到字典中。
-
-        jsondata = result  # Python的dict --转换成----> json的object
-        #print(jsondata)
-        jsonlist.append(jsondata)
-        #print(jsondata)
+       result = {} # 定义Python 字典
+       if tableName != 'business_information':
+           for i in range(len(column_list)):
+                result[column_list[i]] = str(row[i])  # 将row中的每个元素，追加到字典中。
+           jsondata = result  # Python的dict --转换成----> json的object
+           #print(jsondata)
+           jsonlist.append(jsondata)
+       else:
+           for i in range(len(column_list)):
+                result = {}  # 定义Python 字典
+                # body={}
+                # body['key']=column_list[i]
+                # body['value']=str(row[i])
+                #print(englishToChineseDictionary)
+                englishName = englishToChineseDictionary[column_list[i]]
+                result['chineseKey'] = englishName
+                result['englishKey'] =column_list[i]
+                result['value'] = str(row[i]) # 将row中的每个元素，追加到字典中。
+                jsondata = result # Python的dict --转换成----> json的object
+                jsonlist.append(jsondata)
+                #print(jsondata)
+       #print(jsondata)
     closeDB(db)
     #return json.dumps(jsonlist, ensure_ascii=False),flag
     return jsonlist,flag
@@ -116,20 +152,6 @@ def checkCompany(key):
 
     return data,flag
 
-
-#获取字典内容
-def getDictionary(db):
-    # 使用cursor()方法获取操作游标
-    cursor = db.cursor()
-    affectRows = cursor.execute("select english,chinese from dictionary")
-    print(affectRows)
-    result = cursor.fetchone()
-    dictionary = dict()
-    while result != None:
-        dictionary[result[1]] = result[0]
-        print(result, cursor.rownumber)
-        result = cursor.fetchone()
-
 # 增加一行数据，tableType1
 def addRow1(row_values):
     pos = 0
@@ -184,3 +206,5 @@ def insertInfo(items, companyCode):
     if affectedRow <= 0:
         return -1
     db = closeDB(db)
+
+

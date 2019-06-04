@@ -14,29 +14,41 @@ sessionInfo={}
 
 #删除seesion 内容
 def delDict(key):
+    global sessionInfo
     if key in sessionInfo.keys():
         del sessionInfo[key]
 
 #判断seession是否存在
-def checkSessionInfo(key):
-    if key in sessionInfo.keys():
-        return sessionInfo[key]
+def checkSessionInfo(myid):
+    global sessionInfo
+    if myid in sessionInfo.keys():
+        return sessionInfo[myid]
     else:
-        return -1
+        return None
 
 #获取x公司菜单内容
 def requestMenuInfo(request):
+    global sessionInfo
+
     browser = ""
     wait = ""
     data=json.loads(request.body.decode("utf8"))
     key = data.get("key")
     print(key)
 
-    #infoDic: browser,wait,imgObj
-    response,infoDic=requestInfoHttpResponseJson(key,chromeDir,acount,password,loginDir)
-    if not infoDic=={}:
-        sessionInfo[infoDic["myid"]] = infoDic
-        print("info has found in local db")
+    myid = data.get("myid")
+    print(myid)
+
+    response = findInLocalDB(key)
+    if response == None: #如果本地没有，就找网页上的
+        if checkSessionInfo(myid) == None:
+            # infoDic: browser,wait,imgObj
+            response,infoDic=requestInfoFromWeb(key,chromeDir,acount,password,loginDir)
+            if not infoDic=={}:
+                sessionInfo[infoDic["myid"]] = infoDic
+                print("info has found in local db")
+        else:
+            print("直接在web搜索框里找")
 
     print(response)
 
@@ -50,6 +62,8 @@ def requestMenuInfo(request):
 
 #获取公司内容根据表名称
 def getInfoByCompanyName(request):
+    global sessionInfo
+
     data = json.loads(request.body.decode("utf8"))
     companyName = data.get("companyName")
     tableName = data.get("tableName")
@@ -70,14 +84,15 @@ def getInfoByCompanyName(request):
 
 #更换验证码
 def changeCode(request):
-    data = json.loads(request.body.decode("utf8"))
-    print(request.body)
-    print(request.POST)
+    global sessionInfo
 
+    data = json.loads(request.body.decode("utf8"))
     myid = data.get("myid")
     print(myid)
+
     oldInfoDic = sessionInfo[myid]
     response,newinfoDic = changVerifiedCode(oldInfoDic)
+
     print(response)
     sessionInfo[myid] = newinfoDic
     response["Access-Control-Allow-Origin"] = "*"
@@ -87,8 +102,11 @@ def changeCode(request):
 
     return response
 
-#接受验证码，判断并且开始从网上获取
-def doScrapy(request):
+
+#接受验证码，判断
+def checkCode(request):
+    global sessionInfo
+
     data = json.loads(request.body.decode("utf8"))
     print(request.body)
     print(request.POST)
@@ -97,24 +115,48 @@ def doScrapy(request):
     myid = data.get("myid")
     print(myid)
 
-    flag,infoDic = checkVerifiedCode(verifiedCode,sessionInfo[myid]["browser"],sessionInfo[myid]["wait"],myid,sessionTime=0.4)
-    if flag == -1:
-        print("验证码为生成")
-    elif flag == -2:
-        print("未生成session id")
+    response,infoDic = checkVerifiedCode(verifiedCode,sessionInfo[myid]["browser"],sessionInfo[myid]["wait"],myid,sessionTime=0.4)
+    # if flag == -1:
+    #     print("验证码为生成")
+    # elif flag == -2:
+    #     print("未生成session id")
 
+    print(response)
+    sessionInfo[myid] = infoDic
+    response["Access-Control-Allow-Origin"] = "*"
+    response["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+    response["Access-Control-Max-Age"] = "1000"
+    response["Access-Control-Allow-Headers"] = "*"  # 加入这行
+
+    return response
+
+
+#开始从网上获取
+def doScrapy(request):
+    global sessionInfo
+
+    data = json.loads(request.body.decode("utf8"))
+    print(request.body)
+    print(request.POST)
+    verifiedCode = data.get("verifiedCode")
+    print(verifiedCode)
+    myid = data.get("myid")
+    print(myid)
+
+    # flag,infoDic = checkVerifiedCode(verifiedCode,sessionInfo[myid]["browser"],sessionInfo[myid]["wait"],myid,sessionTime=0.4)
+    # if flag == -1:
+    #     print("验证码为生成")
+    # elif flag == -2:
+    #     print("未生成session id")
+    #
+    # else:
+    info,flag=doScrapyForOneKey(sessionInfo[myid]["companyCode"],sessionInfo[myid]["browser"],sessionInfo[myid]["wait"])
+    if flag == 0:
+        print("未找到公司："+sessionInfo[myid]["companyCode"])
+    elif flag == -1:
+        print("公司名称有误，请核实")
     else:
-        info,flag=doScrapyForOneKey(sessionInfo[myid]["companyCode"],sessionInfo[myid]["browser"],sessionInfo[myid]["wait"])
-        if flag == 0:
-            print("未找到公司："+sessionInfo[myid]["companyCode"])
-        elif flag == -1:
-            print("公司名称有误，请核实")
-        else:
-            print("内容获取成功")
-
-
-
-
+        print("内容获取成功")
 
 
 

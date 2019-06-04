@@ -22,6 +22,84 @@ from scrapy.util.util import *
 from scrapy.loginUtil.login import *
 
 
+def getDictionary(db):
+    # 使用cursor()方法获取操作游标
+    cursor = db.cursor()
+    affectRows = cursor.execute("select english,chinese from dictionary")
+    print(affectRows)
+    result = cursor.fetchone()
+    dictionary = dict()
+    while result != None:
+        dictionary[result[1]] = result[0]
+        print(result, cursor.rownumber)
+        result = cursor.fetchone()
+    return dictionary
+
+# from TestDemo.spiders.tmp.static import wordsToAdd, dictionary
+wordsToAdd=[]
+# 获取sql语句拼装信息
+db = pymysql.connect("localhost", "root", "root", "scrapy", charset='utf8')
+dictionary = getDictionary(db)
+db.close()
+
+#请求获取验证码信息
+def requestLogin(chromeDir,acount,password,loginDir):
+    searchDir = chromeDir
+
+    browser = webdriver.Chrome(searchDir)
+
+    try:
+        # 设置浏览器需要打开的url
+        browser.get(loginDir)
+
+        # 默认浏览器等待时间100秒
+        wait = WebDriverWait(browser, 10)
+
+        # 选择账号密码登录方式
+        wait.until(EC.presence_of_element_located((By.ID, "normalLogin")))
+        botton = browser.find_element_by_id("normalLogin")
+        botton.click()
+
+        # 自动添加
+        name = browser.find_element_by_id("nameNormal")
+        name.send_keys(acount)#13958127726
+        pwd = browser.find_element_by_id("pwdNormal")
+        pwd.send_keys(password)#87096927
+
+        # 移动鼠标滑块验证码
+        time.sleep(0.1)
+        wait.until(EC.presence_of_element_located((By.ID, "nc_1_n1z")))
+        move_k = browser.find_element_by_id("nc_1_n1z")
+        time.sleep(0.1)
+        ActionChains(browser).drag_and_drop_by_offset(move_k, 341, 0).perform()
+
+        try:
+            # 等待验证码图片出现
+            try:
+                wait.until(EC.presence_of_element_located((By.XPATH, "//div[@id='nc_1__imgCaptcha_img']/img")))
+            except:
+                browser.close()
+                raise netError("网络连接失败")
+
+            # 获取验证图片，base64编码，可以通过html展示
+            img = browser.find_element_by_xpath("//div[@id='nc_1__imgCaptcha_img']/img")
+            verifiedCode = img.get_attribute("src")
+            return verifiedCode,browser,wait,img
+
+
+        except sessionIdError as e:
+            browser.close()
+            raise sessionIdError(e.errorinfo)
+
+        except codeError as e:
+            browser.close()
+            raise codeError(e.errorinfo)
+
+
+    except TimeoutException as e:
+        browser.close()
+        raise TimeoutException(e.msg)
+
 
 
 #更换验证码
@@ -48,6 +126,11 @@ def changVerifiedCode(infoDic):
 #判断验证码信息，如果正确，点击进入搜索页面
 def checkVerifiedCode(code,browser,wait,myid,sessionTime=0.4):
         try:
+            #999: success, -1: 验证码输入错误, -2:未生成session id
+            toReturnFlag = 999
+            codeInfo = 'success'
+            data = ''
+
             # 填写验证码信息
             inputCode = browser.find_element_by_id("nc_1_captcha_input")
             inputCode.send_keys(code)
@@ -56,98 +139,50 @@ def checkVerifiedCode(code,browser,wait,myid,sessionTime=0.4):
             # 提交验证
             submitButton = browser.find_element_by_xpath("//div[@id='nc_1_scale_submit']/span")
             webdriver.ActionChains(browser).double_click(submitButton).perform()
-            print("验证码提交成功")
 
             # 确认是否出现验证码输入错误提示
-            try:
-                time.sleep(0.5)
-                span = browser.find_element_by_xpath("//div[@id='nc_1__captcha_img_text']/span[@class='nc-lang-cnt']")
-                text = span.get_attribute('innerHTML')
-                print(text)
-                return -1
-            except:
-                print("验证码验证成功")
+            # try:
+            #     time.sleep(0.5)
+            #     span = browser.find_element_by_xpath("//div[@id='nc_1__captcha_img_text']/span[@class='nc-lang-cnt']")
+            #     text = span.get_attribute('innerHTML')
+            #     print(text)
+            #     toReturnFlag= -1
+            #     codeInfo = "网络错误"
+            # except:
+            #     print("验证码验证成功")
+            #     pass
 
 
             # 判断session id 是否生成
             time.sleep(sessionTime)
             sessionId = browser.find_element_by_xpath("//input[@id='csessionid_one']").get_attribute("value")
             if (sessionId == ""):
+                codeInfo="网络错误或者验证码错误,需要重新输入"
                 print("未生成session id")
-                return -2
+                toReturnFlag= -1
+                try:
+                    img = browser.find_element_by_xpath("//div[@id='nc_1__imgCaptcha_img']/img")
+                    data = img.get_attribute("src")
+                except sessionIdError as e:
+                    raise sessionIdError(e.errorinfo)
 
-            # //*[@id="user_login_normal"]/button/strong
-            button = browser.find_element_by_xpath("//*[@id='user_login_normal']/button")
-            button.click()
-
-            # 回车
-            # inputCode.send_keys(Keys.ENTER)
 
         except sessionIdError as e:
+            browser.close()
             raise sessionIdError(e.errorinfo)
 
         except codeError as e:
+            browser.close()
             raise codeError(e.errorinfo)
 
-        flag = 0
+        res = {'msg': codeInfo, 'msg_code': toReturnFlag, 'data': data}  # 999表示返回验证码校验成功
 
         toReturn = {}
         toReturn["browser"] = browser
         toReturn["wait"] = wait
         toReturn["myid"] = myid
-        return flag,toReturn
 
-#请求获取验证码信息
-def requestLogin(chromeDir,acount,password,loginDir):
-    searchDir = chromeDir
-
-    browser = webdriver.Chrome(searchDir)
-
-    try:
-        # 设置浏览器需要打开的url
-        browser.get(loginDir)
-
-        # 默认浏览器等待时间100秒
-        wait = WebDriverWait(browser, 100)
-
-        # 选择账号密码登录方式
-        wait.until(EC.presence_of_element_located((By.ID, "normalLogin")))
-        botton = browser.find_element_by_id("normalLogin")
-        botton.click()
-
-        # 自动添加
-        name = browser.find_element_by_id("nameNormal")
-        name.send_keys(acount)#13958127726
-        pwd = browser.find_element_by_id("pwdNormal")
-        pwd.send_keys(password)#87096927
-
-        # 移动鼠标滑块验证码
-        time.sleep(0.2)
-        wait.until(EC.presence_of_element_located((By.ID, "nc_1_n1z")))
-        move_k = browser.find_element_by_id("nc_1_n1z")
-        ActionChains(browser).drag_and_drop_by_offset(move_k, 341, 0).perform()
-
-        try:
-            # 等待验证码图片出现
-            try:
-                wait.until(EC.presence_of_element_located((By.XPATH, "//div[@id='nc_1__imgCaptcha_img']/img")))
-            except:
-                raise netError("网络连接失败")
-
-            # 获取验证图片，base64编码，可以通过html展示
-            img = browser.find_element_by_xpath("//div[@id='nc_1__imgCaptcha_img']/img")
-            verifiedCode = img.get_attribute("src")
-            return verifiedCode,browser,wait,img
-
-
-        except sessionIdError as e:
-            raise sessionIdError(e.errorinfo)
-
-        except codeError as e:
-            raise codeError(e.errorinfo)
-
-    except TimeoutException as e:
-        raise TimeoutException(e.msg)
+        return HttpResponse(json.dumps(res, ensure_ascii=False)),toReturn
 
 # 搜索栏搜索公司信息
 def searchOne(companyCode,browser,wait):
@@ -303,6 +338,7 @@ def beginNav( browser, wait):
 
 # 根据选择获取模块内容
 def contentPage(soup, option):
+    global wordsToAdd
     # 初始化模块信息储存空间
     moduleInf = None
 
@@ -354,6 +390,13 @@ def contentPage(soup, option):
 
 
 def doScrapyForOneKey(companyCode,browser,wait):
+        # //*[@id="user_login_normal"]/button/strong
+        button = browser.find_element_by_xpath("//*[@id='user_login_normal']/button")
+        button.click()
+
+        # 回车
+        # inputCode.send_keys(Keys.ENTER)
+
         # 进入主页面
         ###############################
         # 搜索公司信息
@@ -371,6 +414,7 @@ def doScrapyForOneKey(companyCode,browser,wait):
         # 获取所有菜单链接
         ###############################
 
+
         if resultNum == '0':
             return None,'0'
 
@@ -379,7 +423,7 @@ def doScrapyForOneKey(companyCode,browser,wait):
 
 
         print("-----开始对公司信息目录进行操作-----")
-        items = beginNav( browser, wait)
+        items = beginNav(browser, wait)
         print("-----结束对公司信息目录进行操作-----")
         print("===========写入内容至本地文本=================")
         #writeResult(output, items, companyCode)
@@ -393,6 +437,8 @@ def doScrapyForOneKey(companyCode,browser,wait):
         #返回内容
         return items,1
     #return doScrapyForOneKey(key,browser, wait)
+
+
 
 ########################################################
 
@@ -421,30 +467,46 @@ def doScrapyForOneKey(companyCode,browser,wait):
 # changVerifiedCode()
 
 #@server.route('/preBegin',methods=['post'])#只有在函数前加上@server.route (),这个函数才是个接口，不是一般的函数
-def requestInfoHttpResponseJson(key,chromeDir,acount,password,loginDir):
-    toReturn = dict()
-    if key=="" or key == None:
-        res = {'msg': '必填字段未填，请查看接口文档', 'msg_code': 1001}  # 1001表示必填接口未填
+
+def findInLocalDB(key):
+    if key == "" or key == None:
+        res = {'msg': '必填字段未填，请查看接口文档', 'msg_code': 1001}  # 1001表示输入值格式错误
     else:
         try:
             print(key)
-            data,flag=checkCompany(key)
+            data, flag = checkCompany(key)
             if flag >= 1:
-                res = {'msg': '信息', 'msg_code': 1000,'data':data}  # 1000表示成功
+                res = {'msg': '信息', 'msg_code': 0, 'data': data}  # 1000表示成功
             else:
-                print("-----开始登录-----")
-                verifiedCode, browser, wait, imgObj = requestLogin( chromeDir, acount, password,loginDir)
-                print("-----结束登录-----")
-                myid=uuid.uuid1().hex
-                res = {'msg': '验证码', 'msg_code': 1001, 'data': verifiedCode, 'myid':myid}  # 1001表示成功,返回验证码
-                toReturn["browser"] = browser
-                toReturn["wait"] = wait
-                toReturn["imgObj"] = imgObj
-                toReturn["myid"]=myid
-                toReturn["companyCode"]=key
+                return None  # 1000表示失败
         except netError as e:
             res = {'msg': '网络不稳定', 'msg_code': 1002}  # 1002表示网络错误
-            browser.close()
+            print('close browser run dev')
+
+    return HttpResponse(json.dumps(res, ensure_ascii=False))
+
+#从网络上获取资料
+def requestInfoFromWeb(key,chromeDir,acount,password,loginDir):
+    toReturn = dict()
+    if key=="" or key == None:
+        res = {'msg': '必填字段未填，请查看接口文档', 'msg_code': 1001}  # 1001表示输入值格式错误
+    else:
+        try:
+            print(key)
+            print("-----开始登录-----")
+            verifiedCode, browser, wait, imgObj = requestLogin( chromeDir, acount, password,loginDir)
+            print("-----结束登录-----")
+            myid=uuid.uuid1().hex
+            res = {'msg': '验证码', 'msg_code': 1001, 'data': verifiedCode, 'myid':myid}  # 1001表示成功,返回验证码
+            toReturn["browser"] = browser
+            toReturn["wait"] = wait
+            toReturn["imgObj"] = imgObj
+            toReturn["myid"]=myid
+            toReturn["companyCode"]=key
+        except netError as e:
+            res = {'msg': '网络不稳定', 'msg_code': 1002}  # 1002表示网络错误
+            print('close browser run dev')
+
 
     return HttpResponse(json.dumps(res,ensure_ascii=False)),toReturn
 
@@ -484,11 +546,7 @@ def getDetailInfo(companyName,tableName):
     closeDB(db)
     return HttpResponse(json.dumps(res,ensure_ascii=False))
 
-#初始化全局变量
-wordsToAdd=[]
-db = pymysql.connect("localhost", "root", "root", "scrapy", charset='utf8')
-dictionary = getDictionary(db)
-db.close()
+
 
 #test
 #getDetailInfo("英大泰和财产保险股份有限公司商丘中心支公司","opening_notice")

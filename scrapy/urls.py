@@ -20,9 +20,9 @@ from django.conf.urls import url
 
 admin.autodiscover()
 urlpatterns = [
-    url(r'^hello/$', hello),
+    url(r'^doScrapy/$', doScrapy, name='doScrapy'),
     url(r'^requestMenuInfo/',requestMenuInfo, name='requestMenuInfo'),
-    url(r'^renderHtml/',renderHtml, name='renderHtml'),
+    url(r'^checkCode/',checkCode, name='checkCode'),
     url(r'^changeCode/', changeCode, name='changeCode'),
     url(r'^getInfoByCompanyName/', getInfoByCompanyName, name='getInfoByCompanyName')
 ]

@@ -4,9 +4,27 @@ import re
 
 # 过滤无用信息
 import sys
+from scrapy.serviceForDatas.serviceForData import *
 
-from scrapy.__init__ import dictionary, wordsToAdd
+def getDictionary(db):
+    # 使用cursor()方法获取操作游标
+    cursor = db.cursor()
+    affectRows = cursor.execute("select english,chinese from dictionary")
+    print(affectRows)
+    result = cursor.fetchone()
+    dictionary = dict()
+    while result != None:
+        dictionary[result[1]] = result[0]
+        print(result, cursor.rownumber)
+        result = cursor.fetchone()
+    return dictionary
 
+# from TestDemo.spiders.tmp.static import wordsToAdd, dictionary
+wordsToAdd=[]
+# 获取sql语句拼装信息
+db = pymysql.connect("localhost", "root", "root", "scrapy", charset='utf8')
+dictionary = getDictionary(db)
+db.close()
 
 def tableInfo2Filter(l):
     patterns = list()
@@ -99,6 +117,7 @@ def runState(soup):
 
 # 获取经营风险页面内容
 def runRisk(soup):
+    global wordsToAdd
     # print(soup)
     ss = soup.findAll('section', {'class': re.compile('panel')})
 
@@ -310,6 +329,7 @@ def basicInfo(soup):
 
 # 用于上下形式的table,数据结构{(字段名),(对应内容)...},字段数量和内容数量保持一致
 def tableInfo2(trs):
+    global wordsToAdd
     # 初始化数据储存列表
     inf = list()
 
@@ -444,6 +464,7 @@ def tableInfo2(trs):
 
 # 用于左右形式的table
 def tableInfo(tds):
+    global wordsToAdd
     flag = 'key'
     inf = list()
     keysSql=""
@@ -480,3 +501,5 @@ def tableInfo(tds):
     # 数字0代表左右表格 old
     #return (0, inf)
     return keysSql + " values" +valuesSql
+
+
