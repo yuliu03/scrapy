@@ -29,6 +29,7 @@ def getAllCols(dbName,tableName):
     db = connectDB()
 
     sql = "SELECT GROUP_CONCAT(COLUMN_NAME SEPARATOR ',') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '" + dbName + "' AND TABLE_NAME = '" + tableName + "'"
+    print(sql)
     data, flag = selectOneSql(sql, db)
     partToDel = ",id,creater,create_time,updater,update_time"
     requestCols = data[0].strip().replace(partToDel, "")
@@ -43,7 +44,7 @@ def selectTableInfo(dbName,tableName,key):
     requestCols=getAllCols(dbName,tableName)
     column_list = requestCols.split(",")
 
-    sql = "select "+requestCols+" from "+tableName+" where Company_name = " + "'"+key+"'"
+    sql = "select DISTINCT "+requestCols+" from "+tableName+" where Company_name = " + "'"+key+"'"
     print(sql)
     # 拼装sql语句
     data, flag=selectAllSql(sql,db)
@@ -54,32 +55,51 @@ def selectTableInfo(dbName,tableName,key):
     #     column_list.append(i[0])  # 提取字段名，追加到列表中
     # print column_list　　　　　 # 举例：列表显示结果：['id', 'NAME', 'LOCAL', 'mobile', 'CreateTime']
 
+    hasRefilledColTitle = False
     jsonlist = list()
+    dataList = list()
     for row in data:  # 一次循环，row代表一行，row以元组的形式显示。
        result = {} # 定义Python 字典
-       if tableName != 'business_information':
+       if tableName == 'company_table_info':
            for i in range(len(column_list)):
                 result[column_list[i]] = str(row[i])  # 将row中的每个元素，追加到字典中。
            jsondata = result  # Python的dict --转换成----> json的object
-           #print(jsondata)
            jsonlist.append(jsondata)
-       else:
+       elif tableName == 'business_information':
            for i in range(len(column_list)):
                 result = {}  # 定义Python 字典
-                # body={}
-                # body['key']=column_list[i]
-                # body['value']=str(row[i])
-                #print(englishToChineseDictionary)
-                englishName = englishToChineseDictionary[column_list[i]]
-                result['chineseKey'] = englishName
+                chineseName = englishToChineseDictionary[column_list[i]]
+                result['chineseKey'] = chineseName
                 result['englishKey'] =column_list[i]
                 result['value'] = str(row[i]) # 将row中的每个元素，追加到字典中。
                 jsondata = result # Python的dict --转换成----> json的object
                 jsonlist.append(jsondata)
-                #print(jsondata)
-       #print(jsondata)
+       else:
+           tmpRow = []
+           #第一次循环，加入列的头名称
+           if not hasRefilledColTitle:
+               for i in range(len(column_list)):
+                   result={}
+                   chineseName = englishToChineseDictionary[column_list[i]]
+                   result['name'] = chineseName
+                   result['prop'] = column_list[i]
+                   tmpRow.append(result)
+               hasRefilledColTitle = True
+               jsondata = tmpRow  # Python的dict --转换成----> json的object
+               jsonlist.append(jsondata)
+               tmpRow = [] #初始化
+
+           result = {}
+           for i in range(len(column_list)):
+               result[column_list[i]] = str(row[i])  # 将row中的每个元素，追加到字典中。
+           dataList.append(result) #每一行就是一个对象
+
+    if len(dataList) > 0:
+        jsonlist.append(dataList)
+
     closeDB(db)
     #return json.dumps(jsonlist, ensure_ascii=False),flag
+    print(jsonlist)
     return jsonlist,flag
 
 #填充字段：num,tableChineseName, tableEnglishName
